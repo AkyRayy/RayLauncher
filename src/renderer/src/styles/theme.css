@@ -1,0 +1,237 @@
+@import 'tailwindcss';
+
+@theme inline {
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Segoe UI Variable Text',
+    'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'SF Mono', 'Cascadia Mono', 'JetBrains Mono', Consolas, ui-monospace, monospace;
+
+  --text-2xs: 10px;
+  --text-2xs--line-height: 13px;
+  --text-2xs--letter-spacing: 0.01em;
+  --text-xs: 11px;
+  --text-xs--line-height: 14px;
+  --text-xs--letter-spacing: 0.006em;
+  --text-sm: 13px;
+  --text-sm--line-height: 17px;
+  --text-sm--letter-spacing: -0.003em;
+  --text-base: 15px;
+  --text-base--line-height: 20px;
+  --text-base--letter-spacing: -0.01em;
+  --text-lg: 17px;
+  --text-lg--line-height: 22px;
+  --text-lg--letter-spacing: -0.018em;
+  --text-xl: 22px;
+  --text-xl--line-height: 26px;
+  --text-xl--letter-spacing: -0.022em;
+  --text-2xl: 28px;
+  --text-2xl--line-height: 34px;
+  --text-2xl--letter-spacing: -0.027em;
+
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 18px;
+  --radius-control: 7px;
+
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-sunken: var(--sunken);
+  --color-fill: var(--fill);
+  --color-hairline: var(--hairline);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
+
+  --shadow-soft: var(--shadow-1);
+  --shadow-card: var(--shadow-2);
+  --shadow-pop: var(--shadow-3);
+  --shadow-control: var(--shadow-ctl);
+
+  --ease-ray: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+:root {
+  color-scheme: light;
+
+  --canvas: #f3efe8;
+  --canvas-solid: #f3efe8;
+  --bg-vignette: rgb(243 239 232 / 0.6);
+  --surface: #fffdf9;
+  --raised: #ffffff;
+  --sunken: #e9e3d9;
+  --fill: rgb(122 108 88 / 0.13);
+  --hairline: rgb(62 52 38 / 0.18);
+  --ink: #1e1a14;
+  --muted: rgb(62 52 40 / 0.64);
+  --faint: rgb(62 52 40 / 0.4);
+
+  --danger: #d70015;
+  --warning: #b25000;
+  --success: #248a3d;
+
+  --shadow-1: 0 0.5px 1px rgb(0 0 0 / 0.05), 0 0 0 0.5px rgb(0 0 0 / 0.05);
+  --shadow-2: 0 1px 2px rgb(0 0 0 / 0.05), 0 10px 28px -14px rgb(0 0 0 / 0.22);
+  --shadow-3: 0 0 0 0.5px rgb(0 0 0 / 0.08), 0 18px 50px -14px rgb(0 0 0 / 0.3);
+  --shadow-ctl: inset 0 0.5px 0 rgb(255 255 255 / 0.75), 0 0.5px 1.5px rgb(0 0 0 / 0.1);
+
+  --material-sidebar: rgb(248 244 237 / 0.74);
+  --material-bar: rgb(248 244 237 / 0.82);
+  --material-pop: rgb(253 250 245 / 0.86);
+  --material-border: rgb(60 48 32 / 0.1);
+
+  --accent: #a4600a;
+  --accent-hover: #8a5008;
+  --on-accent: #ffffff;
+  --accent-soft: color-mix(in oklab, var(--accent) 10%, transparent);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --canvas: #16130f;
+  --canvas-solid: #16130f;
+  --bg-vignette: rgb(6 5 4 / 0.46);
+  --surface: #211d18;
+  --raised: #2d2822;
+  --sunken: #131009;
+  --fill: rgb(240 226 205 / 0.1);
+  --hairline: rgb(255 244 228 / 0.12);
+  --ink: #f7f2e9;
+  --muted: rgb(242 235 223 / 0.62);
+  --faint: rgb(242 235 223 / 0.34);
+
+  --danger: #ff453a;
+  --warning: #ff9f0a;
+  --success: #30d158;
+
+  --shadow-1: 0 0.5px 1px rgb(0 0 0 / 0.4), 0 0 0 0.5px rgb(255 255 255 / 0.06);
+  --shadow-2: 0 1px 2px rgb(0 0 0 / 0.5), 0 12px 32px -16px rgb(0 0 0 / 0.7);
+  --shadow-3: 0 0 0 0.5px rgb(255 255 255 / 0.1), 0 22px 60px -16px rgb(0 0 0 / 0.8);
+  --shadow-ctl: inset 0 0.5px 0 rgb(255 255 255 / 0.12), 0 0.5px 1.5px rgb(0 0 0 / 0.4);
+
+  --material-sidebar: rgb(28 24 20 / 0.7);
+  --material-bar: rgb(24 21 17 / 0.78);
+  --material-pop: rgb(40 35 29 / 0.8);
+  --material-border: rgb(255 246 232 / 0.1);
+
+  --accent: #f0a63a;
+  --accent-hover: #f7bb63;
+  --on-accent: #241703;
+  --accent-soft: color-mix(in oklab, var(--accent) 22%, transparent);
+}
+
+[data-accent='azure'] {
+  --accent: #0040dd;
+  --accent-hover: #0035bb;
+}
+[data-accent='indigo'] {
+  --accent: #4a45c9;
+  --accent-hover: #3d39ad;
+}
+[data-accent='teal'] {
+  --accent: #0071a4;
+  --accent-hover: #005e89;
+}
+[data-accent='moss'] {
+  --accent: #248a3d;
+  --accent-hover: #1d7132;
+}
+[data-accent='amber'] {
+  --accent: #a4600a;
+  --accent-hover: #8a5008;
+}
+[data-accent='rose'] {
+  --accent: #d30f45;
+  --accent-hover: #b30b3a;
+}
+[data-accent='plum'] {
+  --accent: #8944ab;
+  --accent-hover: #733a90;
+}
+[data-accent='graphite'] {
+  --accent: #5c5c61;
+  --accent-hover: #4a4a4f;
+}
+
+[data-theme='dark'][data-accent='azure'] {
+  --accent: #0a84ff;
+  --accent-hover: #3a9bff;
+}
+[data-theme='dark'][data-accent='indigo'] {
+  --accent: #5e5ce6;
+  --accent-hover: #7a78ec;
+}
+[data-theme='dark'][data-accent='teal'] {
+  --accent: #40c8e0;
+  --accent-hover: #63d3e7;
+  --on-accent: #10262b;
+}
+[data-theme='dark'][data-accent='moss'] {
+  --accent: #30d158;
+  --accent-hover: #55da76;
+  --on-accent: #0b2413;
+}
+[data-theme='dark'][data-accent='amber'] {
+  --accent: #f0a63a;
+  --accent-hover: #f7bb63;
+  --on-accent: #241703;
+}
+[data-theme='dark'][data-accent='rose'] {
+  --accent: #ff375f;
+  --accent-hover: #ff5f80;
+}
+[data-theme='dark'][data-accent='plum'] {
+  --accent: #bf5af2;
+  --accent-hover: #cc7bf5;
+}
+[data-theme='dark'][data-accent='graphite'] {
+  --accent: #8e8e93;
+  --accent-hover: #a2a2a7;
+  --on-accent: #1c1c1e;
+}
+
+[data-bg='on'] {
+  --canvas: transparent;
+  --surface: rgb(255 253 249 / 0.88);
+  --raised: rgb(255 255 255 / 0.92);
+  --sunken: rgb(233 227 217 / 0.72);
+  --hairline: rgb(62 52 38 / 0.16);
+  --material-sidebar: rgb(248 244 237 / 0.78);
+  --material-bar: rgb(248 244 237 / 0.8);
+  --material-pop: rgb(253 250 245 / 0.88);
+  --shadow-1: 0 0.5px 1px rgb(0 0 0 / 0.06), 0 0 0 0.5px rgb(255 255 255 / 0.4);
+  --shadow-2: 0 8px 24px -14px rgb(0 0 0 / 0.4), 0 0 0 0.5px rgb(255 255 255 / 0.35);
+}
+
+[data-theme='dark'][data-bg='on'] {
+  --surface: rgb(28 24 20 / 0.62);
+  --raised: rgb(46 40 33 / 0.72);
+  --sunken: rgb(16 13 10 / 0.55);
+  --hairline: rgb(255 246 232 / 0.14);
+  --material-sidebar: rgb(20 17 14 / 0.55);
+  --material-bar: rgb(18 15 12 / 0.58);
+  --material-pop: rgb(34 29 24 / 0.76);
+  --shadow-1: 0 0.5px 1px rgb(0 0 0 / 0.5), 0 0 0 0.5px rgb(255 246 232 / 0.08);
+  --shadow-2: 0 12px 30px -16px rgb(0 0 0 / 0.75), 0 0 0 0.5px rgb(255 246 232 / 0.08);
+}
+
+:root {
+  --row-height: 40px;
+  --page-padding: 32px;
+  --sidebar-row: 30px;
+}
+[data-density='compact'] {
+  --row-height: 34px;
+  --page-padding: 24px;
+  --sidebar-row: 26px;
+}
