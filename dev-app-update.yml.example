@@ -1,0 +1,17 @@
+# Пример конфигурации обновлений для режима разработки.
+#
+# Скопируйте файл рядом, без суффикса `.example`:
+#     copy dev-app-update.yml.example dev-app-update.yml
+# и запустите лаунчер с включённой проверкой:
+#     set RAY_UPDATER_DEV=1 && npm run dev
+#
+# Тогда electron-updater будет ходить в указанный репозиторий, хотя
+# приложение не упаковано. Версия для сравнения берётся из package.json,
+# поэтому для проверки поставьте в нём версию заведомо ниже выпущенной.
+#
+# В обычной сборке этот файл не используется: там адрес берётся из
+# блока `publish` в electron-builder.yml, вшитого в app-update.yml.
+
+provider: github
+owner: AkyRayy
+repo: RayLauncher

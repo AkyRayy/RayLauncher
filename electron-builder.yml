@@ -1,0 +1,56 @@
+appId: com.raylauncher.app
+productName: RayLauncher
+copyright: RayLauncher
+
+directories:
+  output: release
+  buildResources: buildAssets
+
+files:
+  - out/**
+  - package.json
+
+asar: true
+compression: maximum
+npmRebuild: false
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+        - arm64
+  icon: buildAssets/icon.ico
+  artifactName: ${productName}-${version}-${arch}.${ext}
+  fileAssociations:
+    - ext: mrpack
+      name: Modrinth Modpack
+      description: Сборка модов Modrinth
+      icon: buildAssets/icon.ico
+      role: Editor
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: RayLauncher
+  deleteAppDataOnUninstall: false
+  installerLanguages:
+    - ru_RU
+    - en_US
+  language: '1049'
+  include: buildAssets/installer.nsh
+  installerIcon: buildAssets/icon.ico
+  uninstallerIcon: buildAssets/icon.ico
+  installerHeaderIcon: buildAssets/icon.ico
+  installerHeader: buildAssets/installerHeader.bmp
+  installerSidebar: buildAssets/installerSidebar.bmp
+  uninstallerSidebar: buildAssets/installerSidebar.bmp
+
+publish:
+  provider: github
+  owner: AkyRayy
+  repo: RayLauncher
+  releaseType: release
