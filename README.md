@@ -118,23 +118,8 @@ npx electron-builder --win --x64 --publish never -c.win.target=nsis  # толь�
 
 ## Автообновление
 
-1. Впишите свой репозиторий в `electron-builder.yml`:
-
-   ```yaml
-   publish:
-     provider: github
-     owner: <владелец>
-     repo: <репозиторий>
-   ```
-
-2. Поднимите версию в `package.json`. Обновление предлагается, только когда версия релиза больше установленной.
-3. Опубликуйте: `set GH_TOKEN=...`, затем `npm run build:win -- --publish always`.
-
-В релизе должны лежать `*.exe`, `latest.yml` и `*.blockmap`. Без манифеста лаунчер обновление не увидит. Без blockmap не сможет докачать только изменившиеся куски и потянет все 116 МБ заново.
-
 Канал `beta` в настройках включает пререлизы.
 
-Проверить всё это до публикации: скопируйте `dev-app-update.yml.example` в `dev-app-update.yml`, занизьте версию в `package.json` и запустите `set RAY_UPDATER_DEV=1 && npm run dev`.
 
 ## Как устроено
 
