@@ -10,25 +10,28 @@ const CACHE_KEY = 'news:feed:v1'
 
 const imageSchema = z.object({ url: z.string().optional() }).nullish()
 
-const mojangSchema = z.object({
-  version: z.number().optional(),
-  entries: z
-    .array(
-      z.object({
-        id: z.string().optional(),
-        title: z.string(),
-        tag: z.string().optional(),
-        category: z.string().optional(),
-        date: z.string(),
-        text: z.string().default(''),
-        newsPageImage: imageSchema,
-        playPageImage: imageSchema,
-        readMoreLink: z.string().optional(),
-        newsType: z.array(z.string()).default([])
-      })
-    )
-    .default([])
+// Реальный news.json Mojang ставит null в tag/category/text/newsType у части записей,
+// поэтому все необязательные поля — nullish. Каждая запись проверяется отдельно:
+// одна битая запись пропускается, а не роняет всю ленту.
+const mojangEntrySchema = z.object({
+  id: z.string().nullish(),
+  title: z.string(),
+  tag: z.string().nullish(),
+  category: z.string().nullish(),
+  date: z.string().nullish(),
+  text: z.string().nullish(),
+  newsPageImage: imageSchema,
+  playPageImage: imageSchema,
+  readMoreLink: z.string().nullish(),
+  newsType: z.array(z.string()).nullish()
 })
+
+const mojangSchema = z
+  .object({
+    version: z.number().optional(),
+    entries: z.array(z.unknown()).nullish()
+  })
+  .nullish()
 
 const releasesSchema = z.array(
   z.object({
@@ -38,8 +41,8 @@ const releasesSchema = z.array(
     body: z.string().nullish(),
     html_url: z.string(),
     published_at: z.string().nullish(),
-    draft: z.boolean().default(false),
-    prerelease: z.boolean().default(false)
+    draft: z.boolean().nullish().transform((value) => value ?? false),
+    prerelease: z.boolean().nullish().transform((value) => value ?? false)
   })
 )
 
@@ -79,23 +82,43 @@ export async function fetchNews(refresh = false): Promise<NewsFeed> {
 
 async function fetchMinecraftNews(): Promise<NewsItem[]> {
   const data = await getJson(MOJANG.news, mojangSchema)
+  const entries = data?.entries ?? []
 
-  return data.entries
-    .filter((entry) => entry.newsType.length === 0 || entry.newsType.includes('Java'))
-    .slice(0, 24)
-    .map((entry, index) => {
-      const image = entry.newsPageImage?.url ?? entry.playPageImage?.url
-      return {
-        id: entry.id ?? `mc-${entry.date}-${index}`,
-        source: 'minecraft' as const,
-        title: entry.title,
-        summary: entry.text.trim(),
-        date: normalizeDate(entry.date),
-        category: entry.category ?? entry.tag ?? 'Minecraft',
-        ...(image ? { imageUrl: absoluteImage(image) } : {}),
-        ...(entry.readMoreLink ? { link: entry.readMoreLink } : {})
-      }
-    })
+  const items: NewsItem[] = []
+  for (const [index, raw] of entries.entries()) {
+    const item = toMinecraftItem(raw, index)
+    if (item) items.push(item)
+    if (items.length >= 24) break
+  }
+  return items
+}
+
+/** Превращает одну сырую запись Mojang в карточку ленты. null — запись пропускается. */
+export function toMinecraftItem(raw: unknown, index: number): NewsItem | null {
+  const parsed = mojangEntrySchema.safeParse(raw)
+  if (!parsed.success) {
+    logger.debug(`Пропускаю новость Mojang #${index}: неожиданный формат записи`)
+    return null
+  }
+
+  const entry = parsed.data
+  if (entry.title.trim().length === 0) return null
+
+  const newsType = entry.newsType ?? []
+  if (newsType.length > 0 && !newsType.includes('Java')) return null
+
+  const date = entry.date ?? ''
+  const image = entry.newsPageImage?.url ?? entry.playPageImage?.url
+  return {
+    id: entry.id ?? `mc-${date}-${index}`,
+    source: 'minecraft' as const,
+    title: entry.title,
+    summary: (entry.text ?? '').trim(),
+    date: normalizeDate(date),
+    category: entry.category ?? entry.tag ?? 'Minecraft',
+    ...(image ? { imageUrl: absoluteImage(image) } : {}),
+    ...(entry.readMoreLink ? { link: entry.readMoreLink } : {})
+  }
 }
 
 export function absoluteImage(url: string): string {

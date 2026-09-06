@@ -427,7 +427,7 @@ export const en: Dictionary = {
     curseforgeHint: 'Requires your own API key from console.curseforge.com.',
     curseforgeKey: 'CurseForge API key',
     msClientId: 'Microsoft application client ID',
-    msClientIdHint: 'Defaults to the public identifier of the official launcher',
+    msClientIdHint: 'Default is the official Minecraft login. A custom Azure client ID switches to loopback (PKCE) login',
     updateChannel: 'Update channel',
     channelStable: 'Stable',
     channelBeta: 'Beta',

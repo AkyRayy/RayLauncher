@@ -1,11 +1,12 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
-import { shell } from 'electron'
+import { BrowserWindow, shell } from 'electron'
 import { z } from 'zod'
-import { AUTH } from '@shared/constants'
+import { AUTH, DEFAULT_MS_CLIENT_ID } from '@shared/constants'
 import { RayError } from '@shared/errors'
 import { request } from '../core/http'
 import { logger } from '../logger'
+import { getMainWindow } from '../window'
 
 export interface MicrosoftTokens {
   accessToken: string
@@ -29,6 +30,11 @@ export function cancelMicrosoftSignIn(): void {
 
 export function isSignInRunning(): boolean {
   return activeFlow !== null
+}
+
+/** Официальный идентификатор лаунчера Minecraft: ему разрешён только вход через login.live.com. */
+export function isDefaultClientId(clientId: string): boolean {
+  return clientId.trim() === DEFAULT_MS_CLIENT_ID
 }
 
 export interface PkcePair {
@@ -66,15 +72,54 @@ export function buildAuthorizeUrl(params: {
   return `${AUTH.authorize}?${query.toString()}`
 }
 
+/** Страница официального входа Minecraft: открывается во встроенном окне лаунчера. */
+export function buildLiveAuthorizeUrl(params: { state: string }): string {
+  const query = new URLSearchParams({
+    client_id: DEFAULT_MS_CLIENT_ID,
+    response_type: 'code',
+    redirect_uri: AUTH.liveRedirect,
+    scope: AUTH.liveScope,
+    state: params.state,
+    prompt: 'select_account'
+  })
+  return `${AUTH.liveAuthorize}?${query.toString()}`
+}
+
+/** Проверяет, что навигация пришла на desktop-редирект — именно там Microsoft отдаёт код. */
+export function isLiveCallback(url: string): boolean {
+  return url.startsWith(AUTH.liveRedirect)
+}
+
 export function parseRedirect(
   url: string,
   expectedState: string
 ): { code: string } | { error: RayError } {
   const parsed = new URL(url, 'http://127.0.0.1')
-  const error = parsed.searchParams.get('error')
+  return parseMicrosoftCallback(parsed.searchParams, expectedState)
+}
+
+/** Разбирает desktop-редирект: Microsoft может положить код как в query, так и во fragment. */
+export function parseLiveRedirect(
+  url: string,
+  expectedState: string
+): { code: string } | { error: RayError } {
+  const parsed = new URL(url)
+  const params = new URLSearchParams(parsed.search)
+  if (!params.get('code') && !params.get('error') && parsed.hash.length > 1) {
+    const fragment = new URLSearchParams(parsed.hash.slice(1))
+    fragment.forEach((value, key) => params.set(key, value))
+  }
+  return parseMicrosoftCallback(params, expectedState)
+}
+
+function parseMicrosoftCallback(
+  params: URLSearchParams,
+  expectedState: string
+): { code: string } | { error: RayError } {
+  const error = params.get('error')
 
   if (error) {
-    const description = parsed.searchParams.get('error_description') ?? error
+    const description = params.get('error_description') ?? error
     return {
       error:
         error === 'access_denied'
@@ -83,12 +128,12 @@ export function parseRedirect(
     }
   }
 
-  const state = parsed.searchParams.get('state') ?? ''
+  const state = params.get('state') ?? ''
   if (!safeEquals(state, expectedState)) {
     return { error: new RayError('INVALID_INPUT', 'Не совпал state: ответ пришёл не от нашего запроса') }
   }
 
-  const code = parsed.searchParams.get('code')
+  const code = params.get('code')
   if (!code) return { error: new RayError('HTTP_ERROR', 'Microsoft не вернул код авторизации') }
 
   return { code }
@@ -103,6 +148,17 @@ function safeEquals(left: string, right: string): boolean {
 export async function signInWithMicrosoft(clientId: string): Promise<MicrosoftTokens> {
   if (activeFlow) throw new RayError('INVALID_INPUT', 'Вход уже выполняется')
 
+  // Публичный client_id официального лаунчера зарегистрирован в Microsoft только
+  // для редиректа https://login.live.com/oauth20_desktop.srf. Отправка его на
+  // v2.0-эндпоинт с loopback-редиректом всегда даёт invalid_request про redirect_uri,
+  // поэтому для него используется вход через login.live.com во встроенном окне.
+  // Свой Azure Client ID по-прежнему идёт через PKCE + loopback.
+  if (isDefaultClientId(clientId)) return signInWithLive()
+
+  return signInWithPkce(clientId)
+}
+
+async function signInWithPkce(clientId: string): Promise<MicrosoftTokens> {
   const { verifier, challenge } = createPkcePair()
   const state = base64Url(randomBytes(16))
 
@@ -118,6 +174,104 @@ export async function signInWithMicrosoft(clientId: string): Promise<MicrosoftTo
     server.close()
     activeFlow = null
   }
+}
+
+async function signInWithLive(): Promise<MicrosoftTokens> {
+  const WindowCtor = BrowserWindow as unknown as typeof BrowserWindow | undefined
+  if (typeof WindowCtor !== 'function') {
+    throw new RayError('INTERNAL', 'Окно входа недоступно в этом окружении')
+  }
+
+  const state = base64Url(randomBytes(16))
+  logger.info('Вход Microsoft: открываю официальную страницу login.live.com')
+
+  const code = await waitForLiveCode(WindowCtor, state)
+  return exchangeLiveCode(code)
+}
+
+function waitForLiveCode(WindowCtor: typeof BrowserWindow, state: string): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const parent = getMainWindow()
+
+    const window = new WindowCtor({
+      width: 480,
+      height: 720,
+      minWidth: 400,
+      minHeight: 600,
+      show: false,
+      autoHideMenuBar: true,
+      modal: parent !== null,
+      ...(parent ? { parent } : {}),
+      title: 'Вход через Microsoft',
+      backgroundColor: '#f2f2f7',
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        sandbox: true,
+        partition: 'persist:ms-login'
+      }
+    })
+
+    let settled = false
+    const timeout = setTimeout(() => {
+      finish(new RayError('MS_CANCELLED', 'Время ожидания входа истекло'))
+    }, AUTH.timeoutMs)
+
+    const finish = (error: RayError | null, code?: string): void => {
+      if (settled) return
+      settled = true
+      clearTimeout(timeout)
+      activeFlow = null
+      window.webContents.removeListener('will-redirect', onRedirect)
+      window.webContents.removeListener('did-navigate', onNavigate)
+      window.removeListener('closed', onClosed)
+      if (!window.isDestroyed()) window.close()
+      if (error) reject(error)
+      else resolve(code ?? '')
+    }
+
+    activeFlow = { cancel: () => finish(new RayError('MS_CANCELLED', 'Вход отменён')) }
+
+    const handleUrl = (url: string): void => {
+      if (!isLiveCallback(url)) return
+      const result = parseLiveRedirect(url, state)
+      if ('error' in result) finish(result.error)
+      else finish(null, result.code)
+    }
+
+    const onRedirect = (event: { preventDefault: () => void }, url: string): void => {
+      if (isLiveCallback(url)) {
+        event.preventDefault()
+        handleUrl(url)
+      }
+    }
+    const onNavigate = (_event: unknown, url: string): void => handleUrl(url)
+    const onClosed = (): void => finish(new RayError('MS_CANCELLED', 'Окно входа закрыто'))
+
+    window.webContents.on('will-redirect', onRedirect)
+    window.webContents.on('did-navigate', onNavigate)
+    window.once('closed', onClosed)
+    window.once('ready-to-show', () => window.show())
+
+    // Убираем Electron из User-Agent: страница Microsoft стабильнее работает с обычным Chrome.
+    try {
+      const userAgent = window.webContents
+        .getUserAgent()
+        .replaceAll(/Electron\/[\d.]+ ?/g, '')
+        .trim()
+      window.webContents.setUserAgent(userAgent)
+    } catch {
+      // Не критично: вход работает и со стандартным User-Agent.
+    }
+
+    void window.loadURL(buildLiveAuthorizeUrl({ state })).catch((error: unknown) => {
+      finish(
+        new RayError('NET_OFFLINE', 'Не удалось открыть страницу входа Microsoft', {
+          cause: error instanceof Error ? error.message : String(error)
+        })
+      )
+    })
+  })
 }
 
 function listenOnFreePort(): Promise<{ server: Server; port: number }> {
@@ -208,7 +362,7 @@ async function exchangeCode(params: {
   verifier: string
   redirectUri: string
 }): Promise<MicrosoftTokens> {
-  return tokenRequest({
+  return tokenRequest(AUTH.token, {
     client_id: params.clientId,
     grant_type: 'authorization_code',
     code: params.code,
@@ -217,11 +371,31 @@ async function exchangeCode(params: {
   })
 }
 
+async function exchangeLiveCode(code: string): Promise<MicrosoftTokens> {
+  return tokenRequest(AUTH.liveToken, {
+    client_id: DEFAULT_MS_CLIENT_ID,
+    grant_type: 'authorization_code',
+    code,
+    redirect_uri: AUTH.liveRedirect,
+    scope: AUTH.liveScope
+  })
+}
+
 export async function refreshMicrosoftTokens(
   clientId: string,
   refreshToken: string
 ): Promise<MicrosoftTokens> {
-  return tokenRequest({
+  if (isDefaultClientId(clientId)) {
+    return tokenRequest(AUTH.liveToken, {
+      client_id: DEFAULT_MS_CLIENT_ID,
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+      redirect_uri: AUTH.liveRedirect,
+      scope: AUTH.liveScope
+    })
+  }
+
+  return tokenRequest(AUTH.token, {
     client_id: clientId,
     grant_type: 'refresh_token',
     refresh_token: refreshToken,
@@ -229,8 +403,8 @@ export async function refreshMicrosoftTokens(
   })
 }
 
-async function tokenRequest(form: Record<string, string>): Promise<MicrosoftTokens> {
-  const response = await request(AUTH.token, {
+async function tokenRequest(url: string, form: Record<string, string>): Promise<MicrosoftTokens> {
+  const response = await request(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams(form).toString(),

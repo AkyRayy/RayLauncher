@@ -1,5 +1,5 @@
 export const APP_NAME = 'RayLauncher'
-export const APP_USER_AGENT = 'RayLauncher/1.0.0 (+https://github.com/raylauncher/raylauncher)'
+export const APP_USER_AGENT = 'RayLauncher/1.0.0 (+https://github.com/AkyRayy/RayLauncher)'
 
 export const DEFAULT_MS_CLIENT_ID = '00000000402b5328'
 
@@ -17,6 +17,12 @@ export const AUTH = {
   authorize: 'https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize',
   token: 'https://login.microsoftonline.com/consumers/oauth2/v2.0/token',
   scope: 'XboxLive.signin offline_access',
+  // Официальный вход Minecraft через login.live.com: работает с публичным
+  // client_id 00000000402b5328 без регистрации своего приложения Azure.
+  liveAuthorize: 'https://login.live.com/oauth20_authorize.srf',
+  liveToken: 'https://login.live.com/oauth20_token.srf',
+  liveRedirect: 'https://login.live.com/oauth20_desktop.srf',
+  liveScope: 'service::user.auth.xboxlive.com::MBI_SSL',
   xboxLive: 'https://user.auth.xboxlive.com/user/authenticate',
   xsts: 'https://xsts.auth.xboxlive.com/xsts/authorize',
   loginWithXbox: 'https://api.minecraftservices.com/authentication/login_with_xbox',
@@ -53,8 +59,8 @@ export const AUTHLIB_INJECTOR = {
 } as const
 
 export const RELEASES = {
-  api: 'https://api.github.com/repos/raylauncher/raylauncher/releases?per_page=10',
-  page: 'https://github.com/raylauncher/raylauncher/releases',
+  api: 'https://api.github.com/repos/AkyRayy/RayLauncher/releases?per_page=10',
+  page: 'https://github.com/AkyRayy/RayLauncher/releases',
   cacheTtlMs: 15 * 60 * 1000
 } as const
 
@@ -97,5 +103,6 @@ export const EXTERNAL_LINK_ALLOWLIST: readonly string[] = [
   'minecraftforge.net',
   'files.minecraftforge.net',
   'account.microsoft.com',
-  'login.live.com'
+  'login.live.com',
+  'login.microsoftonline.com'
 ]

@@ -121,7 +121,7 @@ RayLauncher/
 │  │  ├─ neoforge.ts  forge.ts      maven/promotions → installer.jar → --installClient через установленный JRE
 │  │  └─ installerRunner.ts         запуск installer.jar, парсинг вывода, контроль результата
 │  ├─ auth/
-│  │  ├─ microsoft.ts               PKCE S256, свободный loopback-порт, state, таймаут 5 мин, отмена
+│  │  ├─ microsoft.ts               login.live.com во встроенном окне (дефолт) или PKCE+loopback (свой Azure ID)
 │  │  ├─ xbox.ts                    XBL + XSTS, разбор ошибок 2148916233/235/238 в русские коды
 │  │  ├─ minecraftServices.ts       login_with_xbox, entitlements, profile (404 → MS_NO_PROFILE)
 │  │  ├─ tokenRefresher.ts          рефреш за 5 мин до истечения и перед каждым запуском

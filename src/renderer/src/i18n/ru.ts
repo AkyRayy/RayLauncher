@@ -443,7 +443,7 @@ export const ru = {
     curseforgeHint: 'Нужен собственный ключ API с console.curseforge.com. Без ключа раздел скрыт.',
     curseforgeKey: 'Ключ API CurseForge',
     msClientId: 'Client ID приложения Microsoft',
-    msClientIdHint: 'По умолчанию используется публичный идентификатор официального лаунчера',
+    msClientIdHint: 'По умолчанию — официальный вход Minecraft. Свой Azure Client ID включает вход через loopback (PKCE)',
     updateChannel: 'Канал обновлений',
     channelStable: 'Стабильный',
     channelBeta: 'Бета',
