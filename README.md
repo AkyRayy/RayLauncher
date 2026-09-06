@@ -5,7 +5,7 @@
 # RayLauncher
 
 **Лаунчер Minecraft Java Edition для Windows.**
-Скачивание и запуск игры написаны с нуля по манифестам Mojang. Без `minecraft-launcher-lib`.
+Скачивание и запуск игры написаны с нуля по манифестам Mojang..
 
 ![Electron](https://img.shields.io/badge/Electron-44.2-1d1b16?style=flat-square)
 ![React](https://img.shields.io/badge/React-19.2-1d1b16?style=flat-square)
@@ -205,6 +205,6 @@ npm run test
 
 ## Лицензия
 
-[MIT](./LICENSE). Подробная история разработки по этапам — в [PLAN.md](./PLAN.md).
+[MIT](./LICENSE).
 
 Проект не связан с Mojang Studios и Microsoft. Minecraft — товарный знак Mojang Studios. Лаунчер использует только официальные публичные API.
