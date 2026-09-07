@@ -19,6 +19,7 @@ export function GameConsole({ open, onClose }: { open: boolean; onClose: () => v
   const t = useI18n()
   const log = useLaunchStore((state) => state.log)
   const game = useLaunchStore((state) => state.game)
+  const kill = useLaunchStore((state) => state.kill)
   const bottom = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -62,6 +63,11 @@ export function GameConsole({ open, onClose }: { open: boolean; onClose: () => v
                 <p className="text-xs text-faint">{t.launch.consoleHint}</p>
               </div>
               <div className="flex items-center gap-2">
+                {(game?.phase === 'running' || game?.phase === 'launching') && (
+                  <Button size="sm" variant="danger" onClick={() => void kill()}>
+                    {t.launch.kill}
+                  </Button>
+                )}
                 {game?.crashReportPath && (
                   <Button size="sm" icon={<WarningIcon size={13} />} onClick={() => void api.game.revealCrash()}>
                     {t.launch.crashReport}

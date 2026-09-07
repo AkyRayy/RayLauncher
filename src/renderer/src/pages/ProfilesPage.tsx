@@ -22,6 +22,8 @@ import { api } from '@renderer/lib/api'
 import { useProfilesStore } from '@renderer/stores/profiles.store'
 import { useSettingsStore } from '@renderer/stores/settings.store'
 import { useLaunchStore } from '@renderer/stores/launch.store'
+import { useProfileStats, useStatsStore } from '@renderer/stores/stats.store'
+import { TemplatePicker } from '@renderer/features/TemplatePicker'
 import { cn } from '@renderer/lib/cn'
 import { formatDateTime, useLocale } from '@renderer/lib/format'
 import { listSpring } from '@renderer/lib/motion'
@@ -44,9 +46,12 @@ export function ProfilesPage(): React.ReactElement {
   const [importing, setImporting] = useState(false)
   const [imported, setImported] = useState<string | null>(null)
 
+  const hydrateStats = useStatsStore((state) => state.hydrate)
+
   useEffect(() => {
     void hydrate()
-  }, [hydrate])
+    void hydrateStats()
+  }, [hydrate, hydrateStats])
 
   return (
     <Page
@@ -96,6 +101,7 @@ export function ProfilesPage(): React.ReactElement {
       )}
 
       <div className="mx-auto max-w-4xl">
+        <TemplatePicker />
         {profiles.length === 0 && ready ? (
           <EmptyState
             icon={<ProfilesIcon size={26} />}
@@ -196,6 +202,8 @@ function ProfileCard({
             : t.profiles.never}
         </p>
 
+        <ProfileStatsLine profileId={profile.id} />
+
         <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-1">
           <Button
             size="sm"
@@ -239,6 +247,29 @@ function ProfileCard({
       </Card>
     </motion.li>
   )
+}
+
+function ProfileStatsLine({ profileId }: { profileId: string }): React.ReactElement {
+  const t = useI18n()
+  const stats = useProfileStats(profileId)
+
+  if (!stats || stats.launches === 0) {
+    return <p className="text-xs text-faint">{t.profiles.neverPlayed}</p>
+  }
+
+  const parts = [
+    t.profiles.launches(stats.launches),
+    t.profiles.playtime(formatPlaytime(stats.playtimeMs))
+  ]
+  if (stats.crashes > 0) parts.push(t.profiles.crashes(stats.crashes))
+  return <p className="text-xs text-faint">{parts.join(' · ')}</p>
+}
+
+function formatPlaytime(ms: number): string {
+  const hours = Math.floor(ms / 3_600_000)
+  const minutes = Math.floor((ms % 3_600_000) / 60_000)
+  if (hours > 0) return `${hours}h ${minutes}m`
+  return `${minutes}m`
 }
 
 function RemoveDialog({

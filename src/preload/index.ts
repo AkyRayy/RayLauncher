@@ -151,6 +151,12 @@ const api: RayApi = {
     loaderVersions: (request) =>
       invoke('profiles:loaderVersions', request) as Promise<
         Awaited<ReturnType<RayApi['profiles']['loaderVersions']>>
+      >,
+    templates: () =>
+      invoke('profiles:templates') as Promise<Awaited<ReturnType<RayApi['profiles']['templates']>>>,
+    createFromTemplate: (request) =>
+      invoke('profiles:createFromTemplate', request) as Promise<
+        Awaited<ReturnType<RayApi['profiles']['createFromTemplate']>>
       >
   },
   mods: {
@@ -178,9 +184,15 @@ const api: RayApi = {
       invoke('mods:updateAll', { profileId }) as Promise<
         Awaited<ReturnType<RayApi['mods']['updateAll']>>
       >,
+    pin: (request) =>
+      invoke('mods:pin', request) as Promise<Awaited<ReturnType<RayApi['mods']['pin']>>>,
+    rollback: (request) =>
+      invoke('mods:rollback', request) as Promise<Awaited<ReturnType<RayApi['mods']['rollback']>>>,
     openFolder: (profileId) => invoke('mods:openFolder', { profileId }) as Promise<void>,
     importPack: () =>
       invoke('mods:importPack') as Promise<Awaited<ReturnType<RayApi['mods']['importPack']>>>,
+    exportPack: (request) =>
+      invoke('mods:exportPack', request) as Promise<Awaited<ReturnType<RayApi['mods']['exportPack']>>>,
     setCurseforgeKey: (key) => invoke('mods:setCurseforgeKey', { key }) as Promise<void>,
     curseforgeReady: () => invoke('mods:curseforgeReady') as Promise<boolean>
   },
@@ -199,8 +211,60 @@ const api: RayApi = {
   game: {
     launch: (request) => invoke('game:launch', request) as Promise<Awaited<ReturnType<RayApi['game']['launch']>>>,
     stop: (profileId) => invoke('game:stop', { profileId }) as Promise<void>,
+    kill: (profileId) => invoke('game:kill', { profileId }) as Promise<void>,
     state: () => invoke('game:state') as Promise<Awaited<ReturnType<RayApi['game']['state']>>>,
     revealCrash: () => invoke('game:revealCrash') as Promise<void>
+  },
+  crash: {
+    verdict: (profileId) =>
+      invoke('crash:verdict', { profileId }) as Promise<
+        Awaited<ReturnType<RayApi['crash']['verdict']>>
+      >,
+    applyFix: (request) =>
+      invoke('crash:applyFix', request) as Promise<Awaited<ReturnType<RayApi['crash']['applyFix']>>>,
+    sendReport: (profileId) =>
+      invoke('crash:sendReport', { profileId }) as Promise<
+        Awaited<ReturnType<RayApi['crash']['sendReport']>>
+      >
+  },
+  perf: {
+    presets: () => invoke('perf:presets') as Promise<Awaited<ReturnType<RayApi['perf']['presets']>>>,
+    apply: (request) =>
+      invoke('perf:apply', request) as Promise<Awaited<ReturnType<RayApi['perf']['apply']>>>,
+    boost: (profileId) =>
+      invoke('perf:boost', { profileId }) as Promise<Awaited<ReturnType<RayApi['perf']['boost']>>>
+  },
+  discord: {
+    status: () => invoke('discord:status') as Promise<Awaited<ReturnType<RayApi['discord']['status']>>>
+  },
+  servers: {
+    list: () => invoke('servers:list') as Promise<Awaited<ReturnType<RayApi['servers']['list']>>>,
+    add: (request) =>
+      invoke('servers:add', request) as Promise<Awaited<ReturnType<RayApi['servers']['add']>>>,
+    update: (request) =>
+      invoke('servers:update', request) as Promise<Awaited<ReturnType<RayApi['servers']['update']>>>,
+    remove: (id) => invoke('servers:remove', { id }) as Promise<void>,
+    ping: (id) =>
+      invoke('servers:ping', { id }) as Promise<Awaited<ReturnType<RayApi['servers']['ping']>>>,
+    pingAll: () =>
+      invoke('servers:pingAll') as Promise<Awaited<ReturnType<RayApi['servers']['pingAll']>>>,
+    connect: (request) =>
+      invoke('servers:connect', request) as Promise<Awaited<ReturnType<RayApi['servers']['connect']>>>
+  },
+  stats: {
+    list: () => invoke('stats:list') as Promise<Awaited<ReturnType<RayApi['stats']['list']>>>
+  },
+  themes: {
+    list: () => invoke('themes:list') as Promise<Awaited<ReturnType<RayApi['themes']['list']>>>,
+    apply: (id) =>
+      invoke('themes:apply', { id }) as Promise<Awaited<ReturnType<RayApi['themes']['apply']>>>,
+    importPack: () =>
+      invoke('themes:import') as Promise<Awaited<ReturnType<RayApi['themes']['importPack']>>>,
+    exportPack: (id) =>
+      invoke('themes:export', { id }) as Promise<
+        Awaited<ReturnType<RayApi['themes']['exportPack']>>
+      >,
+    remove: (id) => invoke('themes:delete', { id }) as Promise<void>
   },
   on
 }

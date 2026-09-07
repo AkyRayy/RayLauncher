@@ -41,11 +41,13 @@ export function ModsInstalledPage(): React.ReactElement {
   const scan = useModsStore((state) => state.scan)
   const checkUpdates = useModsStore((state) => state.checkUpdates)
   const applyAllUpdates = useModsStore((state) => state.applyAllUpdates)
+  const exportPack = useModsStore((state) => state.exportPack)
   const openFolder = useModsStore((state) => state.openFolder)
   const clearError = useModsStore((state) => state.clearError)
 
   const [profileId, setProfileId] = useState(activeId)
   const [notice, setNotice] = useState<string | null>(null)
+  const [withConfigs, setWithConfigs] = useState(true)
   const [removing, setRemoving] = useState<ModEntry | null>(null)
 
   useEffect(() => {
@@ -159,6 +161,23 @@ export function ModsInstalledPage(): React.ReactElement {
             {t.mods.openFolder}
           </Button>
 
+          <label className="flex items-center gap-1.5 text-xs text-muted">
+            <Switch checked={withConfigs} onChange={setWithConfigs} label={t.mods.exportConfigs} />
+            {t.mods.exportConfigs}
+          </label>
+
+          <Button
+            size="sm"
+            icon={<PackageIcon size={14} />}
+            onClick={() => {
+              void exportPack(profile.id, withConfigs).then((path) => {
+                setNotice(path ? t.mods.exportDone : t.mods.exportCancelled)
+              })
+            }}
+          >
+            {t.mods.exportPack}
+          </Button>
+
           <Button
             size="sm"
             variant="ghost"
@@ -227,6 +246,8 @@ function InstalledCard({
 }): React.ReactElement {
   const t = useI18n()
   const toggle = useModsStore((state) => state.toggle)
+  const pin = useModsStore((state) => state.pin)
+  const rollback = useModsStore((state) => state.rollback)
   const applyUpdate = useModsStore((state) => state.applyUpdate)
   const busyId = useModsStore((state) => state.busyId)
   const busy = busyId === mod.id
@@ -255,6 +276,7 @@ function InstalledCard({
             {mod.fileName}
             {mod.size > 0 && ` · ${formatBytes(mod.size)}`}
             {mod.source === 'local' && ` · ${t.mods.localSource}`}
+            {mod.pinned && ` · ${t.mods.pinned}`}
           </p>
           {update && (
             <p className="mt-1 text-xs text-accent">{t.mods.updateTo(update.next.versionNumber)}</p>
@@ -277,6 +299,16 @@ function InstalledCard({
           onChange={(value) => void toggle(mod.id, value)}
           label={mod.enabled ? t.mods.disable : t.mods.enable}
         />
+
+        <Button size="sm" variant="ghost" disabled={busy} onClick={() => void pin(mod.id, !mod.pinned)}>
+          {mod.pinned ? t.mods.unpin : t.mods.pin}
+        </Button>
+
+        {mod.previous && (
+          <Button size="sm" variant="ghost" disabled={busy} onClick={() => void rollback(mod.id)}>
+            {t.mods.rollback}
+          </Button>
+        )}
 
         <Button
           size="sm"

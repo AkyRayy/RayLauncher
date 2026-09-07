@@ -38,7 +38,17 @@ const projectSchema = z.object({
   updated: z.string().optional(),
   source_url: z.string().nullish(),
   issues_url: z.string().nullish(),
-  wiki_url: z.string().nullish()
+  wiki_url: z.string().nullish(),
+  gallery: z
+    .array(
+      z.object({
+        url: z.string(),
+        featured: z.boolean().default(false),
+        title: z.string().nullish(),
+        description: z.string().nullish()
+      })
+    )
+    .default([])
 })
 
 const dependencySchema = z.object({
@@ -188,10 +198,12 @@ export async function lookupByHashes(hashes: readonly string[]): Promise<Map<str
 export async function latestForHashes(
   hashes: readonly string[],
   gameVersion: string,
-  loader: LoaderKind
+  loader?: LoaderKind
 ): Promise<Map<string, ModVersionInfo>> {
   const result = new Map<string, ModVersionInfo>()
-  if (hashes.length === 0 || loader === 'vanilla') return result
+  if (hashes.length === 0) return result
+
+  const useLoaders = loader !== undefined && loader !== 'vanilla'
 
   for (const chunk of chunks([...new Set(hashes)], 100)) {
     const response = await request(`${MODRINTH.base}/version_files/update`, {
@@ -200,7 +212,7 @@ export async function latestForHashes(
       body: JSON.stringify({
         hashes: chunk,
         algorithm: 'sha1',
-        loaders: [loader],
+        ...(useLoaders ? { loaders: [loader] } : {}),
         game_versions: [gameVersion]
       })
     })

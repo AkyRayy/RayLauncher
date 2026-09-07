@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { Settings } from '@shared/types'
-import { DEFAULT_MS_CLIENT_ID } from '@shared/constants'
+import { DEFAULT_DISCORD_CLIENT_ID, DEFAULT_MS_CLIENT_ID } from '@shared/constants'
 import { api } from '@renderer/lib/api'
 
 interface SettingsState {
@@ -39,7 +39,14 @@ const initial: Settings = {
   lastVersionId: '',
   updateChannel: 'stable',
   telemetry: false,
-  onboarded: false
+  telemetryEndpoint: '',
+  onboarded: false,
+  discordPresence: false,
+  discordClientId: DEFAULT_DISCORD_CLIENT_ID,
+  watchdogEnabled: false,
+  watchdogTimeoutMin: 10,
+  themePackId: '',
+  customCssVars: {}
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({

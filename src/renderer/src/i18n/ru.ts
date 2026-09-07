@@ -33,6 +33,8 @@ export const ru = {
     news: 'Новости',
     settings: 'Настройки',
     logs: 'Логи',
+    servers: 'Серверы',
+    faq: 'Вопросы и ответы',
     collapse: 'Свернуть панель',
     expand: 'Развернуть панель'
   },
@@ -40,6 +42,8 @@ export const ru = {
     account: 'Аккаунт',
     play: 'Играть',
     stop: 'Остановить',
+    kill: 'Завершить принудительно',
+    whyCrashed: 'Почему упала?',
     preparing: 'Подготовка',
     downloading: 'Загрузка файлов',
     launching: 'Запуск',
@@ -150,7 +154,11 @@ export const ru = {
     windowHeight: 'Высота',
     fullscreen: 'Полноэкранный режим',
     accountTitle: 'Аккаунт профиля',
-    accountDefault: 'Активный аккаунт лаунчера'
+    accountDefault: 'Активный аккаунт лаунчера',
+    launches: (count: number) => `Запусков: ${count}`,
+    playtime: (value: string) => `В игре: ${value}`,
+    crashes: (count: number) => `Падений: ${count}`,
+    neverPlayed: 'Статистика появится после первого запуска'
   },
   palette: {
     title: 'Палитра команд',
@@ -249,7 +257,21 @@ export const ru = {
     curseforgeSaved: 'Ключ сохранён',
     curseforgeClear: 'Удалить ключ',
     localSource: 'Свой файл',
-    unknownProject: 'Проект не опознан'
+    unknownProject: 'Проект не опознан',
+    kindMod: 'Моды',
+    kindResourcepack: 'Ресурспаки',
+    kindShader: 'Шейдеры',
+    pin: 'Не обновлять',
+    unpin: 'Снять закреп',
+    pinned: 'Закреплён',
+    rollback: 'Откатить версию',
+    rollbackDone: 'Версия откачена',
+    noRollback: 'Предыдущей версии нет',
+    exportPack: 'Поделиться сборкой (.mrpack)',
+    exportConfigs: 'Включить настройки (config)',
+    exportDone: 'Сборка сохранена',
+    exportCancelled: 'Сохранение отменено',
+    updatesBadge: (count: number) => `Обновления: ${count}`
   },
   accounts: {
     title: 'Аккаунты',
@@ -448,6 +470,15 @@ export const ru = {
     channelStable: 'Стабильный',
     channelBeta: 'Бета',
     telemetry: 'Отправлять анонимную статистику ошибок',
+    telemetryEndpoint: 'Куда слать отчёты (URL)',
+    telemetryHint: 'Пусто — отчёты никуда не уходят. Отправляется только текст ошибки и список модов.',
+    discord: 'Статус в Discord',
+    discordHint: 'Показывать, что вы играете через RayLauncher. Работает, если запущен Discord.',
+    discordClientId: 'Client ID приложения Discord',
+    discordClientIdHint: 'Создаётся на discord.com/developers/applications. Пусто — статус не показывается.',
+    watchdog: 'Следить за зависшей игрой',
+    watchdogHint: 'Если окно игры не отвечает дольше таймаута — лаунчер предложит её завершить.',
+    watchdogTimeout: 'Таймаут зависания (минут)',
     reset: 'Сбросить настройки',
     resetHint: 'Профили, аккаунты и скачанные файлы останутся на месте',
     version: 'Версия',
@@ -472,6 +503,146 @@ export const ru = {
     loading: 'Загружаю…',
     soon: 'Скоро',
     stage: 'Этап'
+  },
+  crash: {
+    title: 'Почему игра упала',
+    subtitle: 'Разбор последнего запуска простыми словами',
+    unknown: 'Причина непонятна — посмотрите конец лога',
+    showReport: 'Открыть отчёт',
+    sendReport: 'Отправить анонимный отчёт',
+    sending: 'Отправляю',
+    sent: 'Отчёт отправлен, спасибо',
+    sendHint: 'Только текст ошибки и список модов. Ников и токенов в отчёте нет.',
+    suspects: 'Подозреваемые моды',
+    fixes: 'Что можно сделать',
+    fixDone: 'Готово',
+    noVerdict: 'Завершилась штатно или данных нет',
+    codes: {
+      OUT_OF_MEMORY: 'Закончилась память',
+      OUT_OF_MEMORY_BODY: 'Игре не хватило оперативной памяти. Обычно лечится увеличением лимита.',
+      MOD_CONFLICT: 'Конфликт модов',
+      MOD_CONFLICT_BODY: 'Два мода спорят друг с другом — один из них стоит отключить.',
+      MISSING_DEPENDENCY: 'Не хватает зависимости',
+      MISSING_DEPENDENCY_BODY: 'Мод требует библиотеку, которой нет в профиле.',
+      BROKEN_MOD_FILE: 'Повреждённый файл мода',
+      BROKEN_MOD_FILE_BODY: 'Файл мода битый — поможет переустановка.',
+      OLD_JAVA: 'Старая Java',
+      OLD_JAVA_BODY: 'Игре нужна более свежая Java, чем та, что выбрана сейчас.',
+      JAVA_MISMATCH: 'Java не подходит',
+      JAVA_MISMATCH_BODY: 'Выбранная Java не подходит для этой версии игры.',
+      GRAPHICS_DRIVER: 'Проблема с видеокартой',
+      GRAPHICS_DRIVER_BODY: 'Похоже на сбой графического драйвера — обновите его и проверьте шейдеры.',
+      JVM_CRASH: 'Авария JVM',
+      JVM_CRASH_BODY: 'Упала сама Java-машина. Часто виноваты нативные библиотеки или драйверы.',
+      MISSING_FILES: 'Не хватает файлов игры',
+      MISSING_FILES_BODY: 'Часть файлов потеряна — поможет проверка файлов.',
+      EXIT_KILLED: 'Процесс завершён',
+      EXIT_KILLED_BODY: 'Игра была принудительно закрыта — это не краш.',
+      UNKNOWN: 'Неизвестная ошибка',
+      UNKNOWN_BODY: 'Точную причину определить не удалось.'
+    },
+    fixLabels: {
+      'add-memory': 'Добавить памяти (+2 ГБ)',
+      'disable-suspects': 'Отключить подозреваемые моды',
+      'reinstall-suspects': 'Переустановить подозреваемые моды',
+      'reset-java': 'Вернуть автоматическую Java',
+      'verify-files': 'Проверить файлы игры',
+      'reveal-report': 'Показать отчёт в проводнике'
+    }
+  },
+  perf: {
+    title: 'Скорость',
+    preset: 'Предустановка',
+    low: 'Слабый ПК',
+    balanced: 'Средний ПК',
+    powerful: 'Мощный ПК',
+    apply: 'Применить',
+    applying: 'Применяю',
+    applied: 'Предустановка применена',
+    boostTitle: 'Ускорить модами',
+    boostBody: 'Sodium, Lithium и FerriteCore с Modrinth — одним нажатием.',
+    boost: 'Установить ускорение',
+    boosting: 'Устанавливаю',
+    boostDone: (names: string) => `Установлено: ${names}`,
+    boostNone: 'Всё из набора уже стоит'
+  },
+  servers: {
+    title: 'Серверы',
+    subtitle: 'Пинг, онлайн и быстрое подключение',
+    emptyTitle: 'Серверов пока нет',
+    emptyBody: 'Добавьте адрес — лаунчер покажет MOTD и онлайн.',
+    add: 'Добавить сервер',
+    name: 'Название',
+    namePlaceholder: 'Мой сервер',
+    address: 'Адрес',
+    addressPlaceholder: 'play.example.ru',
+    port: 'Порт',
+    save: 'Сохранить',
+    refresh: 'Обновить все',
+    refreshing: 'Опрашиваю',
+    connect: 'Играть',
+    connecting: 'Подключаю',
+    remove: 'Удалить',
+    offline: 'Нет ответа',
+    online: (current: number, max: number) => `${current} из ${max} в игре`,
+    ping: (ms: number) => `${ms} мс`,
+    profile: 'Профиль для входа',
+    needProfile: 'Создайте профиль, чтобы заходить на серверы',
+    version: (value: string) => `Версия: ${value}`
+  },
+  templates: {
+    title: 'Начать с шаблона',
+    subtitle: 'Готовая сборка на свежей версии игры',
+    use: 'Создать из шаблона',
+    creating: 'Создаю',
+    names: {
+      vanilla: 'Чистая игра',
+      'fabric-perf': 'Fabric + ускорение',
+      'forge-empty': 'Пустой Forge',
+      'neoforge-empty': 'Пустой NeoForge'
+    } as Record<string, string>
+  },
+  themes: {
+    title: 'Темы оформления',
+    subtitle: 'Готовые палитры и свои наборы',
+    apply: 'Применить',
+    applied: 'Применена',
+    import: 'Импорт из файла',
+    export: 'Поделиться темой',
+    remove: 'Удалить',
+    builtin: 'Встроенная',
+    custom: 'Своя',
+    empty: 'Своих тем пока нет — импортируйте файл .raytheme'
+  },
+  faq: {
+    title: 'Частые вопросы',
+    subtitle: 'Ответы без чтения логов',
+    items: [
+      {
+        q: 'Игра вылетает — что делать?',
+        a: 'Откройте разбор падения на главном экране: лаунчер покажет причину и предложит исправление в один клик.'
+      },
+      {
+        q: 'Сколько памяти выделить?',
+        a: 'Половину оперативной памяти, но не больше 8 ГБ. Для больших сборок хватает 4–6 ГБ.'
+      },
+      {
+        q: 'Как установить моды?',
+        a: 'Создайте профиль с Fabric, Forge, NeoForge или Quilt и ставьте моды из каталога — зависимости подтянутся сами.'
+      },
+      {
+        q: 'Что делать с микрофризами?',
+        a: 'Примените предустановка «Средний ПК» и установите ускорение (Sodium + Lithium) из настроек профиля.'
+      },
+      {
+        q: 'Можно ли зайти на сервер в один клик?',
+        a: 'Да: добавьте сервер в разделе «Серверы» и нажмите «Играть» — лаунчер сам подключится.'
+      },
+      {
+        q: 'Куда жаловаться на баги?',
+        a: 'Отправьте анонимный отчёт из окна разбора падения или откройтеissue в репозитории проекта.'
+      }
+    ] as Array<{ q: string; a: string }>
   },
   errors: {
     NET_OFFLINE: 'Нет соединения с интернетом',

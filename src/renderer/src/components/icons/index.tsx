@@ -238,3 +238,20 @@ export const KeyIcon = (props: IconProps): React.ReactElement => (
     <path d="M20 12v2" />
   </Icon>
 )
+
+export const ServerIcon = (props: IconProps): React.ReactElement => (
+  <Icon {...props}>
+    <rect x="4" y="4" width="16" height="6.5" rx="1.5" />
+    <rect x="4" y="13.5" width="16" height="6.5" rx="1.5" />
+    <path d="M7.5 7.25h.01" />
+    <path d="M7.5 16.75h.01" />
+  </Icon>
+)
+
+export const FaqIcon = (props: IconProps): React.ReactElement => (
+  <Icon {...props}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M9.5 9.5a2.5 2.5 0 1 1 3.4 2.3c-.8.3-.9.9-.9 1.7" />
+    <path d="M12 16.5h.01" />
+  </Icon>
+)

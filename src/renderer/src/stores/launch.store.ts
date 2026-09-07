@@ -15,6 +15,7 @@ interface LaunchState {
   launch: (versionId: string, nickname: string) => Promise<void>
   launchProfile: (profileId: string) => Promise<void>
   stop: () => Promise<void>
+  kill: () => Promise<void>
   clearError: () => void
   clearLog: () => void
 }
@@ -55,6 +56,12 @@ export const useLaunchStore = create<LaunchState>((set, get) => ({
     const profileId = get().game?.profileId
     if (!profileId) return
     await api.game.stop(profileId)
+  },
+
+  kill: async () => {
+    const profileId = get().game?.profileId
+    if (!profileId) return
+    await api.game.kill(profileId)
   },
 
   clearError: () => set({ error: null }),

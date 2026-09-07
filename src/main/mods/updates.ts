@@ -9,9 +9,20 @@ import { latestForHashes, lookupByHashes } from './modrinth'
 import { modsDir } from './modManager'
 
 export async function findUpdates(profile: Profile): Promise<ModUpdateInfo[]> {
-  const mods = listMods(profile.id).filter((mod) => mod.source === 'modrinth' && mod.sha1.length > 0)
-  if (mods.length === 0 || profile.loader.kind === 'vanilla') return []
+  const mods = listMods(profile.id).filter(
+    (mod) => mod.source === 'modrinth' && mod.sha1.length > 0 && !mod.pinned
+  )
+  if (mods.length === 0 || profile.loader.kind === 'vanilla') {
+    // Ванильным профилям проверять нечего, кроме паков: для них загрузчик не важен.
+    const packs = mods.filter((mod) => mod.kind !== 'mod')
+    if (packs.length === 0) return []
+    return updatesFor(profile, packs)
+  }
 
+  return updatesFor(profile, mods)
+}
+
+async function updatesFor(profile: Profile, mods: ModEntry[]): Promise<ModUpdateInfo[]> {
   const latest = await latestForHashes(
     mods.map((mod) => mod.sha1),
     profile.gameVersion,
@@ -27,7 +38,7 @@ export async function findUpdates(profile: Profile): Promise<ModUpdateInfo[]> {
       modId: mod.id,
       title: mod.title,
       currentVersion: mod.versionId,
-      next
+      next: { ...next, contentKind: mod.kind }
     })
   }
 
@@ -67,6 +78,7 @@ export async function scanLocalMods(profileId: string): Promise<ModEntry[]> {
       upsertMod({
         profileId,
         source: match ? 'modrinth' : 'local',
+        kind: 'mod',
         projectId: match?.projectId ?? sha1.slice(0, 12),
         versionId: match?.versionId ?? '',
         title: match?.title ?? name.replace(/\.jar(\.disabled)?$/i, ''),
@@ -75,7 +87,8 @@ export async function scanLocalMods(profileId: string): Promise<ModEntry[]> {
         filePath: path.join(directory, name),
         sha1,
         size: 0,
-        enabled
+        enabled,
+        pinned: false
       })
     )
   }

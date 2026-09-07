@@ -1,18 +1,20 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
-import { copyFile } from 'node:fs/promises'
+import { copyFile, readFile } from 'node:fs/promises'
 import { win32 as path } from 'node:path'
 import { app } from 'electron'
-import { APP_NAME } from '@shared/constants'
+import { APP_NAME, CRASH } from '@shared/constants'
 import { RayError } from '@shared/errors'
-import type { Account, GameState, LogLevel } from '@shared/types'
+import type { Account, CrashVerdict, GameState, LogLevel } from '@shared/types'
 import { emitEvent } from '../core/events'
 import { ensureDir, pathExists } from '../core/fsx'
 import { instanceDir, instanceSubdir, paths } from '../core/paths'
 import { logger } from '../logger'
 import { getSettings } from '../store/settings.store'
+import { recordExit, recordLaunch } from '../db/stats.repo'
 import { buildLaunchArgv, buildPlaceholders, launchFeatures } from './arguments'
 import { buildClasspath, commandLineLength, MAX_COMMAND_LINE } from './classpath'
 import { findCrashReport } from './crashReport'
+import { analyzeCrashReport, codeFromExit, withReport } from './crashAnalyzer'
 import { installVersion, type InstallResult } from './installer'
 import {
   createLogParser,
@@ -46,11 +48,13 @@ interface RunningGame {
   state: GameState
   child: ChildProcessWithoutNullStreams
   startedAt: number
+  lastLogAt: number
   sawCrash: boolean
   fatalCode: 'JAVA_VERSION_MISMATCH' | 'GAME_CRASHED' | null
 }
 
 const running = new Map<string, RunningGame>()
+const verdicts = new Map<string, CrashVerdict>()
 
 let lastState: GameState | null = null
 
@@ -69,6 +73,13 @@ export function currentGameState(): GameState | null {
 
 export function isRunning(profileId: string): boolean {
   return running.has(profileId)
+}
+
+/** Последний вердикт анализатора: для профиля или самый свежий из всех. */
+export function getVerdict(profileId?: string): CrashVerdict | null {
+  if (profileId) return verdicts.get(profileId) ?? null
+  const values = [...verdicts.values()]
+  return values.length > 0 ? (values[values.length - 1] as CrashVerdict) : null
 }
 
 export async function launchGame(request: LaunchRequest): Promise<GameState> {
@@ -122,8 +133,51 @@ export function stopGame(profileId: string): void {
   }, 5000).unref()
 }
 
+/** Мгновенное завершение зависшего процесса без ожидания. */
+export function killGame(profileId: string): void {
+  const game = running.get(profileId)
+  if (!game) return
+
+  logger.warn(`Принудительно завершаю игру профиля ${profileId} (pid ${game.child.pid ?? 0})`)
+  game.child.kill('SIGKILL')
+}
+
 export function stopAllGames(): void {
   for (const profileId of [...running.keys()]) stopGame(profileId)
+}
+
+const WATCHDOG_INTERVAL_MS = 30_000
+let watchdogTimer: NodeJS.Timeout | null = null
+
+/** Сторож: гасит игру без признаков жизни дольше таймаута (опция, по умолчанию выкл). */
+export function startWatchdog(): void {
+  if (watchdogTimer) return
+  watchdogTimer = setInterval(() => {
+    let settings
+    try {
+      settings = getSettings()
+    } catch {
+      return
+    }
+    if (!settings.watchdogEnabled) return
+
+    const limitMs = settings.watchdogTimeoutMin * 60_000
+    for (const [profileId, game] of running) {
+      if (game.state.phase !== 'running') continue
+      if (Date.now() - game.lastLogAt < limitMs) continue
+      logger.warn(
+        `Игра профиля ${profileId} молчит ${settings.watchdogTimeoutMin} мин — считаю зависшей и завершаю`
+      )
+      stopGame(profileId)
+    }
+  }, WATCHDOG_INTERVAL_MS)
+  watchdogTimer.unref()
+}
+
+export function stopWatchdog(): void {
+  if (!watchdogTimer) return
+  clearInterval(watchdogTimer)
+  watchdogTimer = null
 }
 
 async function prepareInstanceDirs(profileId: string): Promise<void> {
@@ -275,11 +329,18 @@ function spawnGame(
     state: { profileId, phase: 'launching', pid: child.pid ?? 0, startedAt },
     child,
     startedAt,
+    lastLogAt: startedAt,
     sawCrash: false,
     fatalCode: null
   }
   running.set(profileId, game)
   publish(game.state)
+
+  try {
+    recordLaunch(profileId)
+  } catch (error) {
+    logger.debug(`Статистика не записана: ${error instanceof Error ? error.message : String(error)}`)
+  }
 
   logger.info(`Процесс игры запущен: pid ${child.pid ?? 0}, аргументов ${argv.length}`)
   logger.debug(`Команда: ${javaPath} ${argv.map(hideSecrets).join(' ')}`)
@@ -318,6 +379,7 @@ function attachStream(
 
 function emitLine(game: RunningGame, line: ParsedLine, fallbackLevel: LogLevel): void {
   const level = line.thread || line.logger ? line.level : fallbackLevel
+  game.lastLogAt = Date.now()
 
   emitEvent('game:log', {
     source: game.state.profileId,
@@ -344,8 +406,15 @@ async function handleExit(
   const { profileId } = request
   running.delete(profileId)
 
-  const seconds = Math.round((Date.now() - game.startedAt) / 1000)
+  const sessionMs = Date.now() - game.startedAt
+  const seconds = Math.round(sessionMs / 1000)
   const crashed = exitCode !== 0 || game.sawCrash
+
+  try {
+    recordExit(profileId, sessionMs, crashed)
+  } catch (error) {
+    logger.debug(`Статистика не записана: ${error instanceof Error ? error.message : String(error)}`)
+  }
 
   if (!crashed) {
     logger.info(`Игра профиля ${profileId} закрыта штатно, время сессии ${seconds} с`)
@@ -368,6 +437,12 @@ async function handleExit(
     })
   }
 
+  const verdict = await buildVerdict(profileId, exitCode, report?.path ?? null)
+  if (verdict) {
+    verdicts.set(profileId, verdict)
+    logger.info(`Анализ краша ${profileId}: ${verdict.code}`)
+  }
+
   publish({
     profileId,
     phase: 'crashed',
@@ -375,6 +450,35 @@ async function handleExit(
     startedAt: game.startedAt,
     ...(report ? { crashReportPath: report.path } : {})
   })
+}
+
+async function buildVerdict(
+  profileId: string,
+  exitCode: number,
+  reportPath: string | null
+): Promise<CrashVerdict | null> {
+  try {
+    if (!reportPath) {
+      const byExit = codeFromExit(exitCode)
+      return withReport(
+        byExit
+          ? { code: byExit, suspects: [], fixes: byExit === 'EXIT_KILLED' ? [] : ['reveal-report'] }
+          : { code: 'UNKNOWN', suspects: [], fixes: ['reveal-report'] },
+        { exitCode }
+      )
+    }
+
+    const content = await readFile(reportPath, 'utf8').catch(() => '')
+    const analysis = analyzeCrashReport(content, { exitCode })
+    return withReport(analysis, {
+      exitCode,
+      path: reportPath,
+      ...(content ? { text: content.slice(0, CRASH.reportTextLimit) } : {})
+    })
+  } catch (error) {
+    logger.debug(`Вердикт не построен: ${error instanceof Error ? error.message : String(error)}`)
+    return null
+  }
 }
 
 function publish(state: GameState): void {

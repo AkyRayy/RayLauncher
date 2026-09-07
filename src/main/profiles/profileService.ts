@@ -56,7 +56,10 @@ export async function ensureLoaderInstalled(profile: Profile): Promise<string> {
   return versionId
 }
 
-export async function launchProfile(profileId: string): Promise<ReturnType<typeof launchGame>> {
+export async function launchProfile(
+  profileId: string,
+  options: { extraGameArgs?: string[] } = {}
+): Promise<ReturnType<typeof launchGame>> {
   const profile = requireProfile(profileId)
   await prepareInstance(profileId)
 
@@ -75,7 +78,7 @@ export async function launchProfile(profileId: string): Promise<ReturnType<typeo
     memoryMinMb: memory.minMb,
     memoryMaxMb: memory.maxMb,
     jvmArgs: profile.jvmArgs,
-    gameArgs: profile.gameArgs,
+    gameArgs: [...profile.gameArgs, ...(options.extraGameArgs ?? [])],
     ...(profile.window ? { window: profile.window } : {}),
     ...(profile.java.mode === 'custom' && profile.java.customPath
       ? { javaPath: profile.java.customPath }

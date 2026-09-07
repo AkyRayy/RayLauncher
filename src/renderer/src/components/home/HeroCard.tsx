@@ -9,6 +9,7 @@ import { useSettingsStore } from '@renderer/stores/settings.store'
 import { useVersionsStore } from '@renderer/stores/versions.store'
 import { useActiveProfile, useProfilesStore } from '@renderer/stores/profiles.store'
 import { useUiStore } from '@renderer/stores/ui.store'
+import { useCrashStore } from '@renderer/stores/crash.store'
 import { Button } from '@renderer/components/ui/Button'
 import { ProgressRing } from '@renderer/components/ui/ProgressRing'
 import { VersionPicker } from '@renderer/features/VersionPicker'
@@ -38,6 +39,7 @@ export function HeroCard({ news }: { news: readonly NewsItem[] }): React.ReactEl
   const patch = useSettingsStore((state) => state.patch)
   const catalog = useVersionsStore((state) => state.catalog)
   const toggleConsole = useUiStore((state) => state.toggleConsole)
+  const setCrashOpen = useCrashStore((state) => state.setOpen)
   const [pickerOpen, setPickerOpen] = useState(false)
 
   useEffect(() => {
@@ -209,6 +211,16 @@ export function HeroCard({ news }: { news: readonly NewsItem[] }): React.ReactEl
               {failed && <WarningIcon size={12} />}
               {error ? t.errors[error.code] : game?.phase === 'crashed' ? t.launch.crashed : meta.join(' · ')}
             </p>
+
+            {game?.phase === 'crashed' && (
+              <button
+                type="button"
+                onClick={() => setCrashOpen(true)}
+                className="mt-2 text-xs text-accent hover:underline"
+              >
+                {t.launch.whyCrashed}
+              </button>
+            )}
 
             {profiles.length === 0 && (
               <button

@@ -3,7 +3,7 @@ import { win32 as path } from 'node:path'
 import Store from 'electron-store'
 import type { Settings } from '@shared/types'
 import { settingsSchema } from '@shared/schemas'
-import { DEFAULT_MS_CLIENT_ID, NETWORK } from '@shared/constants'
+import { DEFAULT_DISCORD_CLIENT_ID, DEFAULT_MS_CLIENT_ID, NETWORK } from '@shared/constants'
 import { recommendedMaxMemoryMb } from '@shared/util'
 import { logger } from '../logger'
 
@@ -44,7 +44,14 @@ export function defaultSettings(userDataDir: string): Settings {
     lastVersionId: '',
     updateChannel: 'stable',
     telemetry: false,
-    onboarded: false
+    telemetryEndpoint: '',
+    onboarded: false,
+    discordPresence: true,
+    discordClientId: DEFAULT_DISCORD_CLIENT_ID,
+    watchdogEnabled: false,
+    watchdogTimeoutMin: 10,
+    themePackId: '',
+    customCssVars: {}
   }
 }
 

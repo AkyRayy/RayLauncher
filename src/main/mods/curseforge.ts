@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { CURSEFORGE } from '@shared/constants'
 import { RayError } from '@shared/errors'
-import type { LoaderKind, ModSearchResult, ModVersionInfo } from '@shared/types'
+import type { ContentKind, LoaderKind, ModSearchResult, ModVersionInfo } from '@shared/types'
 import { request } from '../core/http'
 import { getSecret, SECRET_KEYS, setSecret, deleteSecret } from '../store/secrets'
 import { getSettings, patchSettings } from '../store/settings.store'
@@ -103,12 +103,20 @@ export async function searchMods(params: {
   query: string
   gameVersion?: string
   loader?: LoaderKind
+  kind?: ContentKind
   offset?: number
   limit?: number
 }): Promise<ModSearchResult> {
+  const classId =
+    params.kind === 'resourcepack'
+      ? CURSEFORGE.classId.resourcePacks
+      : params.kind === 'shader'
+        ? CURSEFORGE.classId.shaders
+        : CURSEFORGE.classId.mods
+
   const query = new URLSearchParams({
     gameId: String(CURSEFORGE.gameId),
-    classId: String(CURSEFORGE.classId.mods),
+    classId: String(classId),
     searchFilter: params.query,
     sortField: '2',
     sortOrder: 'desc',

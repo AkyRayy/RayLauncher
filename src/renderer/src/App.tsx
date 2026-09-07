@@ -22,10 +22,20 @@ import { DownloadsPage } from '@renderer/pages/DownloadsPage'
 import { NewsPage } from '@renderer/pages/NewsPage'
 import { SettingsPage } from '@renderer/pages/SettingsPage'
 import { LogsPage } from '@renderer/pages/LogsPage'
+import { ServersPage } from '@renderer/pages/ServersPage'
+import { FaqPage } from '@renderer/pages/FaqPage'
+import { CrashDialog } from '@renderer/components/crash/CrashDialog'
 
 export function App(): React.ReactElement {
   const { settings, ready, load } = useSettingsStore()
-  useAppliedTheme(settings.theme, settings.accent, settings.density, settings.backgroundId)
+  useAppliedTheme(
+    settings.theme,
+    settings.accent,
+    settings.density,
+    settings.backgroundId,
+    settings.themePackId,
+    settings.customCssVars
+  )
 
   const hydrate = useLaunchStore((state) => state.hydrate)
   useAppNotifications()
@@ -71,10 +81,13 @@ function Shell({ onboarded }: { onboarded: boolean }): React.ReactElement {
             <Route path="/news" element={<NewsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/logs" element={<LogsPage />} />
+            <Route path="/servers" element={<ServersPage />} />
+            <Route path="/faq" element={<FaqPage />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
         </AnimatePresence>
         {!welcome && <GameConsole open={consoleOpen} onClose={() => setConsoleOpen(false)} />}
+        <CrashDialog />
       </div>
     </div>
   )

@@ -51,10 +51,22 @@ export interface Profile {
 
 export type ModSource = 'modrinth' | 'curseforge' | 'local'
 
+export type ContentKind = 'mod' | 'resourcepack' | 'shader'
+
+export interface ModPreviousVersion {
+  versionId: string
+  versionNumber: string
+  fileName: string
+  downloadUrl: string
+  sha1: string
+  size: number
+}
+
 export interface ModEntry {
   id: string
   profileId: string
   source: ModSource
+  kind: ContentKind
   projectId: string
   versionId: string
   title: string
@@ -66,6 +78,8 @@ export interface ModEntry {
   sha512?: string
   size: number
   enabled: boolean
+  pinned: boolean
+  previous?: ModPreviousVersion
   installedAt: number
 }
 
@@ -98,6 +112,7 @@ export interface ModDependency {
 
 export interface ModVersionInfo {
   source: ModSource
+  contentKind?: ContentKind
   versionId: string
   projectId: string
   title: string
@@ -271,7 +286,14 @@ export interface Settings {
   lastVersionId: string
   updateChannel: UpdateChannel
   telemetry: boolean
+  telemetryEndpoint: string
   onboarded: boolean
+  discordPresence: boolean
+  discordClientId: string
+  watchdogEnabled: boolean
+  watchdogTimeoutMin: number
+  themePackId: string
+  customCssVars: Record<string, string>
 }
 
 export type NewsSource = 'minecraft' | 'launcher'
@@ -331,4 +353,124 @@ export interface AppInfo {
 export interface WindowState {
   maximized: boolean
   focused: boolean
+}
+
+export type CrashCode =
+  | 'OUT_OF_MEMORY'
+  | 'MOD_CONFLICT'
+  | 'MISSING_DEPENDENCY'
+  | 'BROKEN_MOD_FILE'
+  | 'OLD_JAVA'
+  | 'JAVA_MISMATCH'
+  | 'GRAPHICS_DRIVER'
+  | 'JVM_CRASH'
+  | 'MISSING_FILES'
+  | 'EXIT_KILLED'
+  | 'UNKNOWN'
+
+export type CrashFixId =
+  | 'add-memory'
+  | 'disable-suspects'
+  | 'reinstall-suspects'
+  | 'reset-java'
+  | 'verify-files'
+  | 'reveal-report'
+
+export interface CrashSuspect {
+  title: string
+  fileHint: string
+  modId?: string
+}
+
+export interface CrashVerdict {
+  code: CrashCode
+  suspects: CrashSuspect[]
+  fixes: CrashFixId[]
+  exitCode?: number
+  reportPath?: string
+  reportText?: string
+}
+
+export interface CrashFixResult {
+  applied: boolean
+  message: string
+}
+
+export type TelemetrySendReason = 'sent' | 'disabled' | 'no-endpoint' | 'no-verdict' | 'failed'
+
+export interface TelemetrySendResult {
+  sent: boolean
+  reason: TelemetrySendReason
+}
+
+export type PerfPresetId = 'low' | 'balanced' | 'high'
+
+export interface PerfPreset {
+  id: PerfPresetId
+  memoryMb: number
+  jvmArgs: string[]
+}
+
+export interface BoostResult {
+  installed: string[]
+  skipped: string[]
+}
+
+export interface ProfileTemplate {
+  id: string
+  loader: LoaderKind
+  memoryMb?: number
+  jvmPreset?: PerfPresetId
+  boost: boolean
+}
+
+export interface ProfileStats {
+  profileId: string
+  launches: number
+  crashes: number
+  playtimeMs: number
+  lastExitAt?: number
+}
+
+export interface GameServer {
+  id: string
+  name: string
+  address: string
+  port: number
+  favorite: boolean
+  createdAt: number
+  updatedAt: number
+}
+
+export interface ServerStatus {
+  online: boolean
+  motd?: string
+  version?: string
+  playersOnline?: number
+  playersMax?: number
+  latencyMs?: number
+  favicon?: string
+  error?: string
+}
+
+export interface ThemePack {
+  id: string
+  name: string
+  author?: string
+  builtin: boolean
+  theme: ThemeMode
+  accent: AccentId
+  density: Density
+  cssVars: Record<string, string>
+}
+
+export interface DiscordStatus {
+  connected: boolean
+  configured: boolean
+}
+
+export interface PackExportResult {
+  path: string | null
+  files: number
+  overrides: number
 }

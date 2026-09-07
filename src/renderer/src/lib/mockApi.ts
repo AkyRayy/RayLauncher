@@ -5,6 +5,7 @@ import type {
   Profile,
   PublicAccount,
   GameState,
+  GameServer,
   DownloadTask,
   JavaRuntimeInfo,
   LogLine,
@@ -17,7 +18,7 @@ import type {
   VersionSummary,
   WindowState
 } from '@shared/types'
-import { DEFAULT_MS_CLIENT_ID } from '@shared/constants'
+import { DEFAULT_DISCORD_CLIENT_ID, DEFAULT_MS_CLIENT_ID } from '@shared/constants'
 
 const STORAGE_KEY = 'ray.mock.settings'
 
@@ -48,7 +49,14 @@ const defaults: Settings = {
   lastVersionId: '26.2',
   updateChannel: 'stable',
   telemetry: false,
-  onboarded: true
+  telemetryEndpoint: '',
+  onboarded: true,
+  discordPresence: false,
+  discordClientId: DEFAULT_DISCORD_CLIENT_ID,
+  watchdogEnabled: false,
+  watchdogTimeoutMin: 10,
+  themePackId: '',
+  customCssVars: {}
 }
 
 export function createMockApi(): RayApi {
@@ -72,7 +80,7 @@ export function createMockApi(): RayApi {
   const windowState: WindowState = { maximized: false, focused: true }
 
   const info: AppInfo = {
-    version: '1.0.0',
+    version: '1.2.0',
     electron: '44.2.0',
     chrome: '146.0.0.0',
     node: '24.9.0',
@@ -98,12 +106,24 @@ export function createMockApi(): RayApi {
 
   const startedAt = Date.now()
   const log: LogLine[] = [
-    line(startedAt, 'info', 'RayLauncher 1.0.0 запускается'),
+    line(startedAt, 'info', 'RayLauncher 1.2.0 запускается'),
     line(startedAt + 12, 'info', 'Данные: C:\\Users\\Player\\AppData\\Roaming\\RayLauncher'),
     line(startedAt + 14, 'info', 'Игры: C:\\Users\\Player\\AppData\\Roaming\\RayLauncher\\games'),
     line(startedAt + 96, 'debug', 'ipc settings:get ok 1 мс'),
     line(startedAt + 130, 'info', 'Главное окно показано'),
     line(startedAt + 480, 'warn', 'Браузерный режим: данные показаны из мок-адаптера, main-процесс не запущен')
+  ]
+
+  const servers: GameServer[] = [
+    {
+      id: 'srv-demo',
+      name: 'Hypixel (демо)',
+      address: 'mc.hypixel.net',
+      port: 25565,
+      favorite: true,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    }
   ]
 
   return {
@@ -240,6 +260,26 @@ export function createMockApi(): RayApi {
           stable: !id.includes('beta'),
           recommended: index === 0
         }))
+      },
+      templates: async () => [
+        { id: 'vanilla', loader: 'vanilla', boost: false },
+        { id: 'fabric-perf', loader: 'fabric', memoryMb: 4096, jvmPreset: 'balanced', boost: true },
+        { id: 'forge-empty', loader: 'forge', boost: false },
+        { id: 'neoforge-empty', loader: 'neoforge', boost: false }
+      ],
+      createFromTemplate: async ({ templateId, name }) => {
+        const templates = [
+          { id: 'vanilla', loader: 'vanilla' as const, boost: false },
+          { id: 'fabric-perf', loader: 'fabric' as const, boost: true },
+          { id: 'forge-empty', loader: 'forge' as const, boost: false },
+          { id: 'neoforge-empty', loader: 'neoforge' as const, boost: false }
+        ]
+        const template = templates.find((item) => item.id === templateId)
+        if (!template) throw new Error('Шаблон не найден')
+        const profile = mockProfile(name?.trim() || `Из шаблона ${templateId}`, '1.21.4', { kind: template.loader })
+        profiles.push(profile)
+        emit('profiles:changed', profiles)
+        return profile
       }
     },
     accounts: {
@@ -320,7 +360,8 @@ export function createMockApi(): RayApi {
       project: async ({ projectId }) => ({
         title: demoHits.find((hit) => hit.projectId === projectId)?.title ?? projectId,
         body: 'Описание проекта приходит из Modrinth в виде Markdown и очищается sanitize-html.',
-        links: { source: 'https://github.com', issues: 'https://github.com/issues' }
+        links: { source: 'https://github.com', issues: 'https://github.com/issues' },
+        gallery: []
       }),
       versions: async ({ projectId }) => [demoVersion(projectId, '1.0.3'), demoVersion(projectId, '1.0.2')],
       plan: async () => ({ dependencies: [], incompatible: [], missing: [] }),
@@ -365,8 +406,22 @@ export function createMockApi(): RayApi {
             next: demoVersion(mod.projectId, '1.1.0')
           })),
       updateAll: async () => ({ updated: 1, total: 1 }),
+      pin: async ({ modId, pinned }) => {
+        const found = mockMods.find((mod) => mod.id === modId)
+        if (!found) throw new Error('Мод не найден')
+        found.pinned = pinned
+        emit('mods:changed', { profileId: found.profileId, mods: mockMods })
+        return found
+      },
+      rollback: async ({ modId }) => {
+        const found = mockMods.find((mod) => mod.id === modId)
+        if (!found) throw new Error('Мод не найден')
+        emit('mods:changed', { profileId: found.profileId, mods: mockMods })
+        return found
+      },
       openFolder: async () => undefined,
       importPack: async () => null,
+      exportPack: async () => ({ path: null, files: 0, overrides: 0 }),
       setCurseforgeKey: async () => undefined,
       curseforgeReady: async () => false
     },
@@ -378,10 +433,10 @@ export function createMockApi(): RayApi {
       openReleases: async () => undefined
     },
     updates: {
-      state: async () => ({ phase: 'up-to-date' as const, version: '1.0.0', supported: false }),
+      state: async () => ({ phase: 'up-to-date' as const, version: '1.2.0', supported: false }),
       check: async () => {
         await delay(700)
-        return { phase: 'up-to-date' as const, version: '1.0.0', supported: false }
+        return { phase: 'up-to-date' as const, version: '1.2.0', supported: false }
       },
       download: async () => ({ phase: 'idle' as const, supported: false }),
       install: async () => undefined
@@ -395,7 +450,120 @@ export function createMockApi(): RayApi {
         stopSimulation(profileId, emit)
       },
       state: async () => mockGameState,
+      kill: async (profileId) => {
+        stopSimulation(profileId, emit)
+      },
       revealCrash: async () => undefined
+    },
+    crash: {
+      verdict: async () => null,
+      applyFix: async () => ({ applied: true, message: 'Демо: исправление применено' }),
+      sendReport: async () => ({ sent: false, reason: 'disabled' as const })
+    },
+    perf: {
+      presets: async () => [
+        { id: 'low' as const, memoryMb: 2048, jvmArgs: ['-XX:+UseG1GC'] },
+        { id: 'balanced' as const, memoryMb: 4096, jvmArgs: ['-XX:+UseG1GC'] },
+        { id: 'high' as const, memoryMb: 8192, jvmArgs: ['-XX:+UseG1GC'] }
+      ],
+      apply: async ({ profileId, preset }) => {
+        const found = profiles.find((item) => item.id === profileId)
+        if (!found) throw new Error('Профиль не найден')
+        const memory = preset === 'low' ? 2048 : preset === 'high' ? 8192 : 4096
+        found.memory = { auto: false, minMb: Math.floor(memory / 2), maxMb: memory }
+        emit('profiles:changed', profiles)
+        return found
+      },
+      boost: async () => ({ installed: ['sodium', 'lithium'], skipped: [] })
+    },
+    discord: {
+      status: async () => ({ connected: false, configured: false })
+    },
+    servers: {
+      list: async () => servers.map((server) => ({ ...server })),
+      add: async (input) => {
+        const server: GameServer = {
+          id: `srv-${Math.random().toString(16).slice(2, 10)}`,
+          name: input.name,
+          address: input.address,
+          port: input.port ?? 25565,
+          favorite: false,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        }
+        servers.push(server)
+        return server
+      },
+      update: async ({ id, patch }) => {
+        const found = servers.find((item) => item.id === id)
+        if (!found) throw new Error('Сервер не найден')
+        Object.assign(found, patch, { updatedAt: Date.now() })
+        return found
+      },
+      remove: async (id) => {
+        const index = servers.findIndex((item) => item.id === id)
+        if (index >= 0) servers.splice(index, 1)
+      },
+      ping: async () => ({
+        online: true,
+        motd: 'Демо-сервер RayLauncher',
+        version: '1.21.4',
+        playersOnline: 1234,
+        playersMax: 5000,
+        latencyMs: 42
+      }),
+      pingAll: async () => Object.fromEntries(servers.map((server) => [server.id, {
+        online: true,
+        motd: 'Демо-сервер RayLauncher',
+        version: '1.21.4',
+        playersOnline: 1234,
+        playersMax: 5000,
+        latencyMs: 42
+      }])),
+      connect: async ({ profileId }) => {
+        const found = profiles.find((item) => item.id === profileId)
+        await simulateInstall(found?.gameVersion ?? '26.2', emit, tasks)
+        return simulateSession(found?.gameVersion ?? '26.2', found?.name ?? 'Player', emit, profileId)
+      }
+    },
+    stats: {
+      list: async () => profiles.map((profile) => ({
+        profileId: profile.id,
+        launches: 12,
+        crashes: 1,
+        playtimeMs: 3_600_000,
+        lastExitAt: Date.now()
+      }))
+    },
+    themes: {
+      list: async () => [
+        {
+          id: 'ray-dark',
+          name: 'Ray Тёмная',
+          builtin: true,
+          theme: 'dark' as const,
+          accent: 'amber' as const,
+          density: 'comfortable' as const,
+          cssVars: {}
+        },
+        {
+          id: 'ray-light',
+          name: 'Ray Светлая',
+          builtin: true,
+          theme: 'light' as const,
+          accent: 'indigo' as const,
+          density: 'comfortable' as const,
+          cssVars: {}
+        }
+      ],
+      apply: async (id) => {
+        settings = { ...settings, themePackId: id }
+        emit('settings:changed', settings)
+        return settings
+      },
+      importPack: async () => null,
+      exportPack: async () => ({ path: null }),
+      remove: async () => undefined
     },
     on: {
       'settings:changed': on('settings:changed'),
@@ -483,6 +651,7 @@ function mockModEntry(profileId: string, version: ModVersionInfo): ModEntry {
     id: `m-${Math.random().toString(16).slice(2, 10)}`,
     profileId,
     source: version.source,
+    kind: version.contentKind ?? 'mod',
     projectId: version.projectId,
     versionId: version.versionId,
     title: version.title,
@@ -492,6 +661,7 @@ function mockModEntry(profileId: string, version: ModVersionInfo): ModEntry {
     sha1: version.sha1,
     size: version.size,
     enabled: true,
+    pinned: false,
     installedAt: Date.now()
   }
 }
@@ -500,7 +670,7 @@ const demoNews: NewsItem[] = [
   {
     id: 'release-demo',
     source: 'launcher',
-    title: 'RayLauncher 1.0.0',
+    title: 'RayLauncher 1.2.0',
     summary: 'Первая публичная версия: профили-инстансы, моды Modrinth и запуск без сторонних библиотек.',
     date: '2026-09-01T00:00:00.000Z',
     category: 'Обновление лаунчера',

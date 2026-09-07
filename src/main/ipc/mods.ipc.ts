@@ -12,13 +12,15 @@ import {
   installMod,
   installedProjectIds,
   modsDir,
+  pinMod,
   planInstall,
   removeMod,
+  rollbackMod,
   toggleMod,
   updateMod
 } from '../mods/modManager'
 import { findUpdates, scanLocalMods } from '../mods/updates'
-import { importModpack } from '../mods/packs'
+import { exportMrpack, importModpack } from '../mods/packs'
 
 export function registerModsIpc(): void {
 
@@ -26,6 +28,7 @@ export function registerModsIpc(): void {
     const profile = input.profileId ? requireProfile(input.profileId) : null
     const gameVersion = input.gameVersion ?? profile?.gameVersion
     const loader = input.loader ?? profile?.loader.kind
+    const kind = input.kind ?? 'mod'
 
     const result =
       input.source === 'curseforge'
@@ -33,13 +36,15 @@ export function registerModsIpc(): void {
             query: input.query,
             ...(gameVersion ? { gameVersion } : {}),
             ...(loader ? { loader } : {}),
+            kind,
             offset: input.offset ?? 0,
             limit: input.limit ?? 20
           })
         : await modrinth.searchMods({
             query: input.query,
             ...(gameVersion ? { gameVersion } : {}),
-            ...(loader ? { loader } : {}),
+            ...(loader && kind === 'mod' ? { loader } : {}),
+            projectType: kind === 'resourcepack' ? 'resourcepack' : kind === 'shader' ? 'shader' : 'mod',
             offset: input.offset ?? 0,
             limit: input.limit ?? 20,
             ...(input.sort ? { index: input.sort } : {})
@@ -56,7 +61,7 @@ export function registerModsIpc(): void {
 
   handle('mods:project', async ({ source, projectId }) => {
     if (source === 'curseforge') {
-      return { title: await curseforge.fetchProjectTitle(projectId), body: '', links: {} }
+      return { title: await curseforge.fetchProjectTitle(projectId), body: '', links: {}, gallery: [] }
     }
 
     const project = await modrinth.fetchProject(projectId)
@@ -67,13 +72,17 @@ export function registerModsIpc(): void {
         ...(project.source_url ? { source: project.source_url } : {}),
         ...(project.issues_url ? { issues: project.issues_url } : {}),
         ...(project.wiki_url ? { wiki: project.wiki_url } : {})
-      }
+      },
+      gallery: [...project.gallery]
+        .sort((left, right) => Number(right.featured) - Number(left.featured))
+        .map((image) => image.url)
+        .slice(0, 6)
     }
   })
 
-  handle('mods:versions', async ({ source, projectId, profileId }) => {
+  handle('mods:versions', async ({ source, projectId, profileId, kind }) => {
     const profile = requireProfile(profileId)
-    return fetchVersionsFor(source, projectId, profile)
+    return fetchVersionsFor(source, projectId, profile, kind ?? 'mod')
   })
 
   handle('mods:plan', async ({ profileId, version }) => {
@@ -144,6 +153,18 @@ export function registerModsIpc(): void {
     return { updated, total: updates.length }
   })
 
+  handle('mods:pin', async ({ modId, pinned }) => {
+    const entry = await pinMod(modId, pinned)
+    broadcast(entry.profileId)
+    return entry
+  })
+
+  handle('mods:rollback', async ({ modId }) => {
+    const entry = await rollbackMod(modId)
+    broadcast(entry.profileId)
+    return entry
+  })
+
   handle('mods:openFolder', async ({ profileId }) => {
     await shell.openPath(modsDir(profileId))
   })
@@ -166,6 +187,10 @@ export function registerModsIpc(): void {
       modsInstalled: result.modsInstalled,
       filesSkipped: result.filesSkipped
     }
+  })
+
+  handle('mods:exportPack', async ({ profileId, includeConfigs }) => {
+    return exportMrpack(profileId, { includeConfigs: includeConfigs === true })
   })
 
   handle('mods:setCurseforgeKey', async ({ key }) => {

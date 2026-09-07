@@ -7,6 +7,7 @@ import { Switch } from '@renderer/components/ui/Switch'
 import { SegmentedControl } from '@renderer/components/ui/SegmentedControl'
 import { useProfilesStore } from '@renderer/stores/profiles.store'
 import { useAccountsStore } from '@renderer/stores/accounts.store'
+import { PerfSection } from '@renderer/features/PerfSection'
 import { listSpring } from '@renderer/lib/motion'
 import { formatMemory } from '@shared/util'
 import { MEMORY } from '@shared/constants'
@@ -123,6 +124,8 @@ export function ProfileSettingsSheet({
               label={t.settings.offlineSkins}
             />
           </Section>
+
+          <PerfSection profileId={profile.id} />
         </div>
       </motion.aside>
     </motion.div>

@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto'
-import type { ModEntry, ModSource } from '@shared/types'
+import type { ContentKind, ModEntry, ModPreviousVersion, ModSource } from '@shared/types'
 import { statement, transaction } from './database'
 
 interface ModRow {
   id: string
   profile_id: string
   source: string
+  kind: string | null
   project_id: string
   version_id: string
   title: string
@@ -17,12 +18,14 @@ interface ModRow {
   sha512: string | null
   size: number
   enabled: number
+  pinned: number | null
+  previous_json: string | null
   installed_at: number
 }
 
 const SELECT = `
-  SELECT id, profile_id, source, project_id, version_id, title, slug, icon_url,
-         file_name, file_path, sha1, sha512, size, enabled, installed_at
+  SELECT id, profile_id, source, kind, project_id, version_id, title, slug, icon_url,
+         file_name, file_path, sha1, sha512, size, enabled, pinned, previous_json, installed_at
   FROM mods
 `
 
@@ -65,11 +68,13 @@ export function upsertMod(input: UpsertModInput): ModEntry {
   }
 
   statement(`
-    INSERT INTO mods (id, profile_id, source, project_id, version_id, title, slug, icon_url,
-                      file_name, file_path, sha1, sha512, size, enabled, installed_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO mods (id, profile_id, source, kind, project_id, version_id, title, slug, icon_url,
+                      file_name, file_path, sha1, sha512, size, enabled, pinned, previous_json,
+                      installed_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(profile_id, file_name) DO UPDATE SET
       source = excluded.source,
+      kind = excluded.kind,
       project_id = excluded.project_id,
       version_id = excluded.version_id,
       title = excluded.title,
@@ -80,11 +85,14 @@ export function upsertMod(input: UpsertModInput): ModEntry {
       sha512 = excluded.sha512,
       size = excluded.size,
       enabled = excluded.enabled,
+      pinned = excluded.pinned,
+      previous_json = excluded.previous_json,
       installed_at = excluded.installed_at
   `).run(
     entry.id,
     entry.profileId,
     entry.source,
+    entry.kind,
     entry.projectId,
     entry.versionId,
     entry.title,
@@ -96,10 +104,23 @@ export function upsertMod(input: UpsertModInput): ModEntry {
     entry.sha512 ?? null,
     entry.size,
     entry.enabled ? 1 : 0,
+    entry.pinned ? 1 : 0,
+    entry.previous ? JSON.stringify(entry.previous) : null,
     entry.installedAt
   )
 
   return entry
+}
+
+export function setModPinned(id: string, pinned: boolean): void {
+  statement('UPDATE mods SET pinned = ? WHERE id = ?').run(pinned ? 1 : 0, id)
+}
+
+export function setModPrevious(id: string, previous: ModPreviousVersion | null): void {
+  statement('UPDATE mods SET previous_json = ? WHERE id = ?').run(
+    previous ? JSON.stringify(previous) : null,
+    id
+  )
 }
 
 export function setModEnabled(id: string, enabled: boolean, filePath: string, fileName: string): void {
@@ -135,6 +156,7 @@ function toEntry(row: ModRow): ModEntry {
     id: row.id,
     profileId: row.profile_id,
     source: row.source === 'curseforge' ? 'curseforge' : row.source === 'local' ? 'local' : 'modrinth',
+    kind: asContentKind(row.kind),
     projectId: row.project_id,
     versionId: row.version_id,
     title: row.title,
@@ -146,6 +168,30 @@ function toEntry(row: ModRow): ModEntry {
     ...(row.sha512 ? { sha512: row.sha512 } : {}),
     size: row.size,
     enabled: row.enabled === 1,
+    pinned: (row.pinned ?? 0) === 1,
+    ...(parsePrevious(row.previous_json) ? { previous: parsePrevious(row.previous_json) as ModPreviousVersion } : {}),
     installedAt: row.installed_at
+  }
+}
+
+function asContentKind(value: string | null): ContentKind {
+  return value === 'resourcepack' || value === 'shader' ? value : 'mod'
+}
+
+function parsePrevious(raw: string | null): ModPreviousVersion | null {
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw) as Partial<ModPreviousVersion>
+    if (!parsed.versionId || !parsed.fileName || !parsed.downloadUrl) return null
+    return {
+      versionId: parsed.versionId,
+      versionNumber: parsed.versionNumber ?? '',
+      fileName: parsed.fileName,
+      downloadUrl: parsed.downloadUrl,
+      sha1: parsed.sha1 ?? '',
+      size: parsed.size ?? 0
+    }
+  } catch {
+    return null
   }
 }

@@ -16,7 +16,7 @@ import { ModVersionSheet } from '@renderer/features/ModVersionSheet'
 import { useModsStore, type SortId } from '@renderer/stores/mods.store'
 import { useProfilesStore } from '@renderer/stores/profiles.store'
 import { useSettingsStore } from '@renderer/stores/settings.store'
-import type { ModSearchHit, Profile } from '@shared/types'
+import type { ContentKind, ModSearchHit, Profile } from '@shared/types'
 
 export function ModsCatalogPage(): React.ReactElement {
   const t = useI18n()
@@ -28,6 +28,7 @@ export function ModsCatalogPage(): React.ReactElement {
   const source = useModsStore((state) => state.source)
   const query = useModsStore((state) => state.query)
   const sort = useModsStore((state) => state.sort)
+  const kind = useModsStore((state) => state.kind)
   const hits = useModsStore((state) => state.hits)
   const total = useModsStore((state) => state.total)
   const searching = useModsStore((state) => state.searching)
@@ -36,6 +37,7 @@ export function ModsCatalogPage(): React.ReactElement {
   const setSource = useModsStore((state) => state.setSource)
   const setQuery = useModsStore((state) => state.setQuery)
   const setSort = useModsStore((state) => state.setSort)
+  const setKind = useModsStore((state) => state.setKind)
   const search = useModsStore((state) => state.search)
   const loadMore = useModsStore((state) => state.loadMore)
 
@@ -48,8 +50,11 @@ export function ModsCatalogPage(): React.ReactElement {
   }, [hydrate])
 
   const moddable = useMemo(
-    () => profiles.filter((profile) => profile.loader.kind !== 'vanilla'),
-    [profiles]
+    () =>
+      kind === 'mod'
+        ? profiles.filter((profile) => profile.loader.kind !== 'vanilla')
+        : profiles,
+    [profiles, kind]
   )
 
   const profile: Profile | null = useMemo(() => {
@@ -60,7 +65,7 @@ export function ModsCatalogPage(): React.ReactElement {
   useEffect(() => {
     if (!profile) return
     void search(profile.id)
-  }, [profile, search, source, sort])
+  }, [profile, search, source, sort, kind])
 
   if (profiles.length > 0 && moddable.length === 0) {
     return (
@@ -157,6 +162,17 @@ export function ModsCatalogPage(): React.ReactElement {
             />
           )}
 
+          <SegmentedControl
+            ariaLabel={t.mods.kindMod}
+            value={kind}
+            onChange={(value: ContentKind) => setKind(value)}
+            options={[
+              { value: 'mod', label: t.mods.kindMod },
+              { value: 'resourcepack', label: t.mods.kindResourcepack },
+              { value: 'shader', label: t.mods.kindShader }
+            ]}
+          />
+
           <Button type="submit" variant="primary" disabled={searching}>
             {searching ? t.mods.checking : t.mods.search}
           </Button>
@@ -210,6 +226,7 @@ export function ModsCatalogPage(): React.ReactElement {
           profile={profile}
           projectId={opened.projectId}
           source={opened.source}
+          kind={kind}
           title={opened.title}
           onClose={() => setOpened(null)}
         />

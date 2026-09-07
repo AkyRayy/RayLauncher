@@ -1,6 +1,6 @@
 {
   "name": "raylauncher",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Лаунчер Minecraft Java Edition для Windows на Electron 44 и React 19",
   "keywords": [
     "minecraft",

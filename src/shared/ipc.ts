@@ -1,8 +1,20 @@
 import type {
   AppInfo,
+  ContentKind,
+  CrashFixId,
+  CrashFixResult,
+  CrashVerdict,
+  DiscordStatus,
+  GameServer,
   LoaderKind,
+  PackExportResult,
+  PerfPreset,
+  PerfPresetId,
   Profile,
+  ProfileStats,
+  ProfileTemplate,
   PublicAccount,
+  BoostResult,
   DownloadTask,
   GameState,
   InstallStage,
@@ -14,7 +26,10 @@ import type {
   ModUpdateInfo,
   ModVersionInfo,
   NewsFeed,
+  ServerStatus,
   Settings,
+  TelemetrySendResult,
+  ThemePack,
   UpdateState,
   VersionCatalog,
   WindowState,
@@ -63,8 +78,38 @@ export interface IpcContract {
     res: GameState
   }
   'game:stop': { req: { profileId: string }; res: void }
+  'game:kill': { req: { profileId: string }; res: void }
   'game:state': { req: void; res: GameState | null }
   'game:revealCrash': { req: void; res: void }
+
+  'crash:verdict': { req: { profileId?: string }; res: CrashVerdict | null }
+  'crash:applyFix': { req: { profileId?: string; fixId: CrashFixId }; res: CrashFixResult }
+  'crash:sendReport': { req: { profileId?: string }; res: TelemetrySendResult }
+
+  'perf:presets': { req: void; res: PerfPreset[] }
+  'perf:apply': { req: { profileId: string; preset: PerfPresetId }; res: Profile }
+  'perf:boost': { req: { profileId: string }; res: BoostResult }
+
+  'discord:status': { req: void; res: DiscordStatus }
+
+  'servers:list': { req: void; res: GameServer[] }
+  'servers:add': { req: { name: string; address: string; port?: number }; res: GameServer }
+  'servers:update': {
+    req: { id: string; patch: { name?: string; address?: string; port?: number; favorite?: boolean } }
+    res: GameServer
+  }
+  'servers:remove': { req: { id: string }; res: void }
+  'servers:ping': { req: { id: string }; res: ServerStatus }
+  'servers:pingAll': { req: void; res: Record<string, ServerStatus> }
+  'servers:connect': { req: { serverId: string; profileId: string }; res: GameState }
+
+  'stats:list': { req: void; res: ProfileStats[] }
+
+  'themes:list': { req: void; res: ThemePack[] }
+  'themes:apply': { req: { id: string }; res: Settings }
+  'themes:import': { req: void; res: ThemePack | null }
+  'themes:export': { req: { id?: string }; res: { path: string | null } }
+  'themes:delete': { req: { id: string }; res: void }
 
   'accounts:list': { req: void; res: PublicAccount[] }
   'accounts:active': { req: void; res: string | null }
@@ -119,6 +164,8 @@ export interface IpcContract {
     req: { kind: LoaderKind; gameVersion: string }
     res: Array<{ id: string; stable: boolean; recommended?: boolean }>
   }
+  'profiles:templates': { req: void; res: ProfileTemplate[] }
+  'profiles:createFromTemplate': { req: { templateId: string; name?: string }; res: Profile }
 
   'mods:search': {
     req: {
@@ -127,6 +174,7 @@ export interface IpcContract {
       profileId?: string
       gameVersion?: string
       loader?: LoaderKind
+      kind?: ContentKind
       sort?: 'relevance' | 'downloads' | 'follows' | 'newest' | 'updated'
       offset?: number
       limit?: number
@@ -135,10 +183,15 @@ export interface IpcContract {
   }
   'mods:project': {
     req: { source: ModSource; projectId: string }
-    res: { title: string; body: string; links: { source?: string; issues?: string; wiki?: string } }
+    res: {
+      title: string
+      body: string
+      links: { source?: string; issues?: string; wiki?: string }
+      gallery: string[]
+    }
   }
   'mods:versions': {
-    req: { source: ModSource; projectId: string; profileId: string }
+    req: { source: ModSource; projectId: string; profileId: string; kind?: ContentKind }
     res: ModVersionInfo[]
   }
   'mods:plan': {
@@ -156,11 +209,14 @@ export interface IpcContract {
   'mods:scan': { req: { profileId: string }; res: ModEntry[] }
   'mods:updates': { req: { profileId: string }; res: ModUpdateInfo[] }
   'mods:updateAll': { req: { profileId: string }; res: { updated: number; total: number } }
+  'mods:pin': { req: { modId: string; pinned: boolean }; res: ModEntry }
+  'mods:rollback': { req: { modId: string }; res: ModEntry }
   'mods:openFolder': { req: { profileId: string }; res: void }
   'mods:importPack': {
     req: void
     res: { profileId: string; name: string; modsInstalled: number; filesSkipped: number } | null
   }
+  'mods:exportPack': { req: { profileId: string; includeConfigs?: boolean }; res: PackExportResult }
   'mods:setCurseforgeKey': { req: { key: string }; res: void }
   'mods:curseforgeReady': { req: void; res: boolean }
 
@@ -229,8 +285,29 @@ export const IPC_CHANNELS = [
   'downloads:reveal',
   'game:launch',
   'game:stop',
+  'game:kill',
   'game:state',
   'game:revealCrash',
+  'crash:verdict',
+  'crash:applyFix',
+  'crash:sendReport',
+  'perf:presets',
+  'perf:apply',
+  'perf:boost',
+  'discord:status',
+  'servers:list',
+  'servers:add',
+  'servers:update',
+  'servers:remove',
+  'servers:ping',
+  'servers:pingAll',
+  'servers:connect',
+  'stats:list',
+  'themes:list',
+  'themes:apply',
+  'themes:import',
+  'themes:export',
+  'themes:delete',
   'accounts:list',
   'accounts:active',
   'accounts:setActive',
@@ -251,9 +328,11 @@ export const IPC_CHANNELS = [
   'profiles:duplicate',
   'profiles:delete',
   'profiles:install',
-  'profiles:launch',
+    'profiles:launch',
   'profiles:openFolder',
   'profiles:loaderVersions',
+  'profiles:templates',
+  'profiles:createFromTemplate',
   'mods:search',
   'mods:project',
   'mods:versions',
@@ -266,8 +345,11 @@ export const IPC_CHANNELS = [
   'mods:scan',
   'mods:updates',
   'mods:updateAll',
+  'mods:pin',
+  'mods:rollback',
   'mods:openFolder',
   'mods:importPack',
+  'mods:exportPack',
   'mods:setCurseforgeKey',
   'mods:curseforgeReady',
   'news:list',
@@ -398,6 +480,8 @@ export interface RayApi {
     loaderVersions(request: { kind: LoaderKind; gameVersion: string }): Promise<
       Array<{ id: string; stable: boolean; recommended?: boolean }>
     >
+    templates(): Promise<ProfileTemplate[]>
+    createFromTemplate(request: { templateId: string; name?: string }): Promise<Profile>
   }
   mods: {
     search(request: {
@@ -406,6 +490,7 @@ export interface RayApi {
       profileId?: string
       gameVersion?: string
       loader?: LoaderKind
+      kind?: ContentKind
       sort?: 'relevance' | 'downloads' | 'follows' | 'newest' | 'updated'
       offset?: number
       limit?: number
@@ -413,11 +498,17 @@ export interface RayApi {
     project(request: {
       source: ModSource
       projectId: string
-    }): Promise<{ title: string; body: string; links: { source?: string; issues?: string; wiki?: string } }>
+    }): Promise<{
+      title: string
+      body: string
+      links: { source?: string; issues?: string; wiki?: string }
+      gallery: string[]
+    }>
     versions(request: {
       source: ModSource
       projectId: string
       profileId: string
+      kind?: ContentKind
     }): Promise<ModVersionInfo[]>
     plan(request: {
       profileId: string
@@ -435,6 +526,8 @@ export interface RayApi {
     scan(profileId: string): Promise<ModEntry[]>
     updates(profileId: string): Promise<ModUpdateInfo[]>
     updateAll(profileId: string): Promise<{ updated: number; total: number }>
+    pin(request: { modId: string; pinned: boolean }): Promise<ModEntry>
+    rollback(request: { modId: string }): Promise<ModEntry>
     openFolder(profileId: string): Promise<void>
     importPack(): Promise<{
       profileId: string
@@ -442,6 +535,7 @@ export interface RayApi {
       modsInstalled: number
       filesSkipped: number
     } | null>
+    exportPack(request: { profileId: string; includeConfigs?: boolean }): Promise<PackExportResult>
     setCurseforgeKey(key: string): Promise<void>
     curseforgeReady(): Promise<boolean>
   }
@@ -458,8 +552,44 @@ export interface RayApi {
   game: {
     launch(request: { versionId: string; nickname: string; accountId?: string; memoryMaxMb?: number }): Promise<GameState>
     stop(profileId: string): Promise<void>
+    kill(profileId: string): Promise<void>
     state(): Promise<GameState | null>
     revealCrash(): Promise<void>
+  }
+  crash: {
+    verdict(profileId?: string): Promise<CrashVerdict | null>
+    applyFix(request: { profileId?: string; fixId: CrashFixId }): Promise<CrashFixResult>
+    sendReport(profileId?: string): Promise<TelemetrySendResult>
+  }
+  perf: {
+    presets(): Promise<PerfPreset[]>
+    apply(request: { profileId: string; preset: PerfPresetId }): Promise<Profile>
+    boost(profileId: string): Promise<BoostResult>
+  }
+  discord: {
+    status(): Promise<DiscordStatus>
+  }
+  servers: {
+    list(): Promise<GameServer[]>
+    add(request: { name: string; address: string; port?: number }): Promise<GameServer>
+    update(request: {
+      id: string
+      patch: { name?: string; address?: string; port?: number; favorite?: boolean }
+    }): Promise<GameServer>
+    remove(id: string): Promise<void>
+    ping(id: string): Promise<ServerStatus>
+    pingAll(): Promise<Record<string, ServerStatus>>
+    connect(request: { serverId: string; profileId: string }): Promise<GameState>
+  }
+  stats: {
+    list(): Promise<ProfileStats[]>
+  }
+  themes: {
+    list(): Promise<ThemePack[]>
+    apply(id: string): Promise<Settings>
+    importPack(): Promise<ThemePack | null>
+    exportPack(id?: string): Promise<{ path: string | null }>
+    remove(id: string): Promise<void>
   }
   on: {
     [E in IpcEventChannel]: (listener: (payload: IpcEvents[E]) => void) => Unsubscribe

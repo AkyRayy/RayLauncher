@@ -16,6 +16,8 @@ export const en: Dictionary = {
     news: 'News',
     settings: 'Settings',
     logs: 'Logs',
+    servers: 'Servers',
+    faq: 'FAQ',
     collapse: 'Collapse sidebar',
     expand: 'Expand sidebar'
   },
@@ -23,6 +25,8 @@ export const en: Dictionary = {
     account: 'Account',
     play: 'Play',
     stop: 'Stop',
+    kill: 'Force quit',
+    whyCrashed: 'Why did it crash?',
     preparing: 'Preparing',
     downloading: 'Downloading files',
     launching: 'Launching',
@@ -133,7 +137,11 @@ export const en: Dictionary = {
     windowHeight: 'Height',
     fullscreen: 'Fullscreen',
     accountTitle: 'Profile account',
-    accountDefault: 'Launcher active account'
+    accountDefault: 'Launcher active account',
+    launches: (count: number) => `Launches: ${count}`,
+    playtime: (value: string) => `Playtime: ${value}`,
+    crashes: (count: number) => `Crashes: ${count}`,
+    neverPlayed: 'Stats appear after the first launch'
   },
   palette: {
     title: 'Command palette',
@@ -233,7 +241,21 @@ export const en: Dictionary = {
     curseforgeSaved: 'Key saved',
     curseforgeClear: 'Remove key',
     localSource: 'Local file',
-    unknownProject: 'Project not recognised'
+    unknownProject: 'Project not recognised',
+    kindMod: 'Mods',
+    kindResourcepack: 'Resource packs',
+    kindShader: 'Shaders',
+    pin: 'Skip updates',
+    unpin: 'Unpin',
+    pinned: 'Pinned',
+    rollback: 'Roll back version',
+    rollbackDone: 'Version rolled back',
+    noRollback: 'No previous version',
+    exportPack: 'Share pack (.mrpack)',
+    exportConfigs: 'Include settings (config)',
+    exportDone: 'Pack saved',
+    exportCancelled: 'Save cancelled',
+    updatesBadge: (count: number) => `Updates: ${count}`
   },
   accounts: {
     title: 'Accounts',
@@ -432,6 +454,15 @@ export const en: Dictionary = {
     channelStable: 'Stable',
     channelBeta: 'Beta',
     telemetry: 'Send anonymous crash statistics',
+    telemetryEndpoint: 'Report endpoint (URL)',
+    telemetryHint: 'Empty — reports go nowhere. Only the error text and mod list are sent.',
+    discord: 'Discord status',
+    discordHint: 'Show that you play via RayLauncher. Works when Discord is running.',
+    discordClientId: 'Discord application Client ID',
+    discordClientIdHint: 'Created at discord.com/developers/applications. Empty — status stays off.',
+    watchdog: 'Watch for a hung game',
+    watchdogHint: 'If the game window stops responding past the timeout, the launcher offers to kill it.',
+    watchdogTimeout: 'Hang timeout (minutes)',
     reset: 'Reset settings',
     resetHint: 'Profiles, accounts and downloaded files stay untouched',
     version: 'Version',
@@ -456,6 +487,146 @@ export const en: Dictionary = {
     loading: 'Loading…',
     soon: 'Soon',
     stage: 'Stage'
+  },
+  crash: {
+    title: 'Why the game crashed',
+    subtitle: 'Plain-language breakdown of the last run',
+    unknown: 'Cause unclear — check the end of the log',
+    showReport: 'Open report',
+    sendReport: 'Send anonymous report',
+    sending: 'Sending',
+    sent: 'Report sent, thank you',
+    sendHint: 'Only the error text and mod list. No nicknames or tokens.',
+    suspects: 'Suspect mods',
+    fixes: 'What you can do',
+    fixDone: 'Done',
+    noVerdict: 'Exited normally or no data',
+    codes: {
+      OUT_OF_MEMORY: 'Out of memory',
+      OUT_OF_MEMORY_BODY: 'The game ran out of RAM. Raising the limit usually fixes it.',
+      MOD_CONFLICT: 'Mod conflict',
+      MOD_CONFLICT_BODY: 'Two mods fight each other — try disabling one.',
+      MISSING_DEPENDENCY: 'Missing dependency',
+      MISSING_DEPENDENCY_BODY: 'A mod needs a library that is not in the profile.',
+      BROKEN_MOD_FILE: 'Corrupted mod file',
+      BROKEN_MOD_FILE_BODY: 'The mod file is broken — reinstalling helps.',
+      OLD_JAVA: 'Outdated Java',
+      OLD_JAVA_BODY: 'The game needs newer Java than currently selected.',
+      JAVA_MISMATCH: 'Wrong Java',
+      JAVA_MISMATCH_BODY: 'The selected Java does not fit this game version.',
+      GRAPHICS_DRIVER: 'Graphics driver issue',
+      GRAPHICS_DRIVER_BODY: 'Looks like a graphics driver failure — update it and check shaders.',
+      JVM_CRASH: 'JVM crash',
+      JVM_CRASH_BODY: 'The Java machine itself crashed. Native libs or drivers are often guilty.',
+      MISSING_FILES: 'Missing game files',
+      MISSING_FILES_BODY: 'Some files are lost — verifying files helps.',
+      EXIT_KILLED: 'Process killed',
+      EXIT_KILLED_BODY: 'The game was force-closed — not a crash.',
+      UNKNOWN: 'Unknown error',
+      UNKNOWN_BODY: 'Could not determine the exact cause.'
+    },
+    fixLabels: {
+      'add-memory': 'Add memory (+2 GB)',
+      'disable-suspects': 'Disable suspect mods',
+      'reinstall-suspects': 'Reinstall suspect mods',
+      'reset-java': 'Restore automatic Java',
+      'verify-files': 'Verify game files',
+      'reveal-report': 'Reveal report in Explorer'
+    }
+  },
+  perf: {
+    title: 'Performance',
+    preset: 'Preset',
+    low: 'Weak PC',
+    balanced: 'Average PC',
+    powerful: 'Powerful PC',
+    apply: 'Apply',
+    applying: 'Applying',
+    applied: 'Preset applied',
+    boostTitle: 'Boost with mods',
+    boostBody: 'Sodium, Lithium and FerriteCore from Modrinth — in one click.',
+    boost: 'Install boost',
+    boosting: 'Installing',
+    boostDone: (names: string) => `Installed: ${names}`,
+    boostNone: 'Everything from the set is already installed'
+  },
+  servers: {
+    title: 'Servers',
+    subtitle: 'Ping, online and quick connect',
+    emptyTitle: 'No servers yet',
+    emptyBody: 'Add an address — the launcher will show MOTD and online.',
+    add: 'Add server',
+    name: 'Name',
+    namePlaceholder: 'My server',
+    address: 'Address',
+    addressPlaceholder: 'play.example.com',
+    port: 'Port',
+    save: 'Save',
+    refresh: 'Refresh all',
+    refreshing: 'Pinging',
+    connect: 'Play',
+    connecting: 'Connecting',
+    remove: 'Remove',
+    offline: 'No response',
+    online: (current: number, max: number) => `${current} of ${max} online`,
+    ping: (ms: number) => `${ms} ms`,
+    profile: 'Profile to join with',
+    needProfile: 'Create a profile to join servers',
+    version: (value: string) => `Version: ${value}`
+  },
+  templates: {
+    title: 'Start from a template',
+    subtitle: 'Ready-made pack on the latest game version',
+    use: 'Create from template',
+    creating: 'Creating',
+    names: {
+      vanilla: 'Vanilla',
+      'fabric-perf': 'Fabric + boost',
+      'forge-empty': 'Empty Forge',
+      'neoforge-empty': 'Empty NeoForge'
+    } as Record<string, string>
+  },
+  themes: {
+    title: 'Appearance themes',
+    subtitle: 'Ready palettes and custom packs',
+    apply: 'Apply',
+    applied: 'Applied',
+    import: 'Import from file',
+    export: 'Share theme',
+    remove: 'Remove',
+    builtin: 'Built-in',
+    custom: 'Custom',
+    empty: 'No custom themes yet — import a .raytheme file'
+  },
+  faq: {
+    title: 'FAQ',
+    subtitle: 'Answers without reading logs',
+    items: [
+      {
+        q: 'The game crashes — what to do?',
+        a: 'Open the crash breakdown on the home screen: the launcher shows the cause and offers a one-click fix.'
+      },
+      {
+        q: 'How much memory to allocate?',
+        a: 'Half of your RAM, but no more than 8 GB. 4–6 GB is enough for large packs.'
+      },
+      {
+        q: 'How do I install mods?',
+        a: 'Create a profile with Fabric, Forge, NeoForge or Quilt and install mods from the catalog — dependencies resolve themselves.'
+      },
+      {
+        q: 'What about micro-stutters?',
+        a: 'Apply the “Average PC” preset and install the boost (Sodium + Lithium) from profile settings.'
+      },
+      {
+        q: 'Can I join a server in one click?',
+        a: 'Yes: add the server in the Servers section and press Play — the launcher connects by itself.'
+      },
+      {
+        q: 'Where to report bugs?',
+        a: 'Send an anonymous report from the crash breakdown window or open an issue in the project repository.'
+      }
+    ] as Array<{ q: string; a: string }>
   },
   errors: {
     NET_OFFLINE: 'No internet connection',

@@ -18,6 +18,7 @@ import {
   prepareInstance,
   removeProfile
 } from '../profiles/profileService'
+import { createFromTemplate, listTemplates } from '../profiles/templates'
 import { listLoaderVersions } from '../loaders'
 import { isRunning } from '../minecraft/launcher'
 
@@ -96,6 +97,12 @@ export function registerProfilesIpc(): void {
   handle('profiles:loaderVersions', async ({ kind, gameVersion }) => {
     if (kind === 'vanilla') return []
     return listLoaderVersions(kind, gameVersion)
+  })
+
+  handle('profiles:templates', () => listTemplates())
+
+  handle('profiles:createFromTemplate', async ({ templateId, name }) => {
+    return createFromTemplate(templateId, name)
   })
 }
 

@@ -9,11 +9,13 @@ import {
   CatalogIcon,
   ChevronIcon,
   DownloadIcon,
+  FaqIcon,
   InstalledIcon,
   LogsIcon,
   NewsIcon,
   PlayIcon,
   ProfilesIcon,
+  ServerIcon,
   SettingsIcon
 } from '@renderer/components/icons'
 
@@ -35,6 +37,7 @@ export function Sidebar(): React.ReactElement {
   const primary: NavItem[] = [
     { to: '/home', label: t.nav.home, icon: <PlayIcon size={15} /> },
     { to: '/profiles', label: t.nav.profiles, icon: <ProfilesIcon size={15} /> },
+    { to: '/servers', label: t.nav.servers, icon: <ServerIcon size={15} /> },
     { to: '/mods', label: t.nav.mods, icon: <CatalogIcon size={15} />, end: true },
     { to: '/news', label: t.nav.news, icon: <NewsIcon size={15} /> },
     { to: '/settings', label: t.nav.settings, icon: <SettingsIcon size={15} /> }
@@ -42,7 +45,8 @@ export function Sidebar(): React.ReactElement {
 
   const utility: NavItem[] = [
     { to: '/downloads', label: t.nav.downloads, icon: <DownloadIcon size={15} />, badge: downloading },
-    { to: '/logs', label: t.nav.logs, icon: <LogsIcon size={15} /> }
+    { to: '/logs', label: t.nav.logs, icon: <LogsIcon size={15} /> },
+    { to: '/faq', label: t.nav.faq, icon: <FaqIcon size={15} /> }
   ]
 
   const modsOpen = location.pathname.startsWith('/mods')

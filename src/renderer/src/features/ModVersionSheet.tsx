@@ -10,7 +10,7 @@ import { Skeleton } from '@renderer/components/ui/Skeleton'
 import { CheckIcon, WarningIcon } from '@renderer/components/icons'
 import { useModsStore } from '@renderer/stores/mods.store'
 import { formatBytes } from '@shared/util'
-import type { ModVersionInfo, Profile } from '@shared/types'
+import type { ContentKind, ModVersionInfo, Profile } from '@shared/types'
 
 interface InstallSummary {
   dependencies: ModVersionInfo[]
@@ -22,12 +22,14 @@ export function ModVersionSheet({
   profile,
   projectId,
   source,
+  kind,
   title,
   onClose
 }: {
   profile: Profile
   projectId: string
   source: 'modrinth' | 'curseforge' | 'local'
+  kind: ContentKind
   title: string
   onClose: () => void
 }): React.ReactElement {
@@ -43,7 +45,7 @@ export function ModVersionSheet({
   useEffect(() => {
     let alive = true
     api.mods
-      .versions({ source, projectId, profileId: profile.id })
+      .versions({ source, projectId, profileId: profile.id, kind })
       .then((list) => {
         if (alive) setVersions(list)
       })
@@ -53,7 +55,7 @@ export function ModVersionSheet({
     return () => {
       alive = false
     }
-  }, [source, projectId, profile.id])
+  }, [source, projectId, profile.id, kind])
 
   const selected = useMemo(() => {
     if (!versions || versions.length === 0) return null

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { LoaderKind, Profile } from '@shared/types'
+import type { LoaderKind, Profile, ProfileTemplate } from '@shared/types'
 import { RayError } from '@shared/errors'
 import { api } from '@renderer/lib/api'
 import { useSettingsStore } from './settings.store'
@@ -26,6 +26,9 @@ interface ProfilesState {
   install: (profileId: string) => Promise<void>
   openFolder: (profileId: string, sub?: 'mods' | 'saves' | 'logs' | 'crash-reports') => Promise<void>
   fetchLoaderVersions: (kind: LoaderKind, gameVersion: string) => Promise<LoaderVersion[]>
+  templates: ProfileTemplate[]
+  loadTemplates: () => Promise<void>
+  createFromTemplate: (templateId: string, name?: string) => Promise<Profile | null>
   setActive: (profileId: string) => Promise<void>
   clearError: () => void
 }
@@ -37,6 +40,7 @@ export const useProfilesStore = create<ProfilesState>((set, get) => ({
   error: null,
   loaderVersions: {},
   loadingLoader: false,
+  templates: [],
 
   hydrate: async () => {
     const profiles = await api.profiles.list()
@@ -122,6 +126,27 @@ export const useProfilesStore = create<ProfilesState>((set, get) => ({
 
   setActive: async (profileId) => {
     await useSettingsStore.getState().patch({ activeProfileId: profileId })
+  },
+
+  loadTemplates: async () => {
+    try {
+      set({ templates: await api.profiles.templates() })
+    } catch (error) {
+      set({ error: RayError.from(error, 'INTERNAL') })
+    }
+  },
+
+  createFromTemplate: async (templateId, name) => {
+    set({ error: null })
+    try {
+      const profile = await api.profiles.createFromTemplate({ templateId, name })
+      await get().hydrate()
+      await get().setActive(profile.id)
+      return profile
+    } catch (error) {
+      set({ error: RayError.from(error, 'INTERNAL') })
+      return null
+    }
   },
 
   clearError: () => set({ error: null })

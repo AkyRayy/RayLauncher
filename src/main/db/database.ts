@@ -56,6 +56,30 @@ const MIGRATIONS: readonly string[] = [
     value      TEXT NOT NULL,
     expires_at INTEGER NOT NULL
   );
+  `,
+  `
+  ALTER TABLE mods ADD COLUMN kind TEXT NOT NULL DEFAULT 'mod';
+  ALTER TABLE mods ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE mods ADD COLUMN previous_json TEXT;
+
+  CREATE TABLE profile_stats (
+    profile_id   TEXT PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
+    launches     INTEGER NOT NULL DEFAULT 0,
+    crashes      INTEGER NOT NULL DEFAULT 0,
+    playtime_ms  INTEGER NOT NULL DEFAULT 0,
+    last_exit_at INTEGER
+  );
+
+  CREATE TABLE servers (
+    id         TEXT PRIMARY KEY,
+    name       TEXT NOT NULL,
+    address    TEXT NOT NULL,
+    port       INTEGER NOT NULL DEFAULT 25565,
+    favorite   INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+  CREATE INDEX servers_order ON servers(favorite DESC, name COLLATE NOCASE);
   `
 ]
 

@@ -7,7 +7,7 @@ import { handle } from './registry'
 import { createGuestAccount } from '../auth/offline'
 import { getActiveAccount } from '../auth/accountManager'
 import { ensureFreshAccount } from '../auth/tokenRefresher'
-import { currentGameState, isRunning, launchGame, onGameState, stopGame } from '../minecraft/launcher'
+import { currentGameState, isRunning, killGame, launchGame, onGameState, stopGame } from '../minecraft/launcher'
 import { getSettings, patchSettings } from '../store/settings.store'
 import { logger } from '../logger'
 
@@ -45,6 +45,10 @@ export function registerGameIpc(): void {
 
   handle('game:stop', ({ profileId }) => {
     stopGame(profileId)
+  })
+
+  handle('game:kill', ({ profileId }) => {
+    killGame(profileId)
   })
 
   handle('game:state', () => currentGameState())

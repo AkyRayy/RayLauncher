@@ -48,7 +48,14 @@ export const settingsSchema = z.object({
   lastVersionId: z.string().max(64),
   updateChannel: updateChannelSchema,
   telemetry: z.boolean(),
-  onboarded: z.boolean()
+  telemetryEndpoint: z.string().max(300),
+  onboarded: z.boolean(),
+  discordPresence: z.boolean(),
+  discordClientId: z.string().max(32),
+  watchdogEnabled: z.boolean(),
+  watchdogTimeoutMin: z.number().int().min(2).max(120),
+  themePackId: z.string().max(64),
+  customCssVars: z.record(z.string().max(60), z.string().max(200))
 })
 
 export const settingsPatchSchema = settingsSchema
@@ -163,8 +170,11 @@ export const modDependencySchema = z.object({
   versionId: z.string().max(64).optional()
 })
 
+export const contentKindSchema = z.enum(['mod', 'resourcepack', 'shader'])
+
 export const modVersionSchema = z.object({
   source: modSourceSchema,
+  contentKind: contentKindSchema.optional(),
   versionId: z.string().min(1).max(64),
   projectId: z.string().min(1).max(64),
   title: z.string().max(200),
@@ -188,6 +198,7 @@ export const modSearchSchema = z.object({
   profileId: z.string().max(64).optional(),
   gameVersion: z.string().max(40).optional(),
   loader: loaderKindSchema.optional(),
+  kind: contentKindSchema.optional(),
   sort: z.enum(['relevance', 'downloads', 'follows', 'newest', 'updated']).optional(),
   offset: z.number().int().min(0).max(10_000).optional(),
   limit: z.number().int().min(1).max(100).optional()
@@ -223,8 +234,51 @@ export const requestSchemas = {
   'downloads:reveal': taskIdSchema,
   'game:launch': gameLaunchSchema,
   'game:stop': z.object({ profileId: profileIdSchema }),
+  'game:kill': z.object({ profileId: profileIdSchema }),
   'game:state': empty,
   'game:revealCrash': empty,
+  'crash:verdict': z.object({ profileId: z.string().max(64).optional() }),
+  'crash:applyFix': z.object({
+    profileId: z.string().max(64).optional(),
+    fixId: z.enum([
+      'add-memory',
+      'disable-suspects',
+      'reinstall-suspects',
+      'reset-java',
+      'verify-files',
+      'reveal-report'
+    ])
+  }),
+  'crash:sendReport': z.object({ profileId: z.string().max(64).optional() }),
+  'perf:presets': empty,
+  'perf:apply': z.object({ profileId: profileIdSchema, preset: z.enum(['low', 'balanced', 'high']) }),
+  'perf:boost': modProfileSchema,
+  'discord:status': empty,
+  'servers:list': empty,
+  'servers:add': z.object({
+    name: z.string().min(1).max(60),
+    address: z.string().min(1).max(255),
+    port: z.number().int().min(1).max(65535).optional()
+  }),
+  'servers:update': z.object({
+    id: z.string().min(1).max(64),
+    patch: z.object({
+      name: z.string().min(1).max(60).optional(),
+      address: z.string().min(1).max(255).optional(),
+      port: z.number().int().min(1).max(65535).optional(),
+      favorite: z.boolean().optional()
+    })
+  }),
+  'servers:remove': z.object({ id: z.string().min(1).max(64) }),
+  'servers:ping': z.object({ id: z.string().min(1).max(64) }),
+  'servers:pingAll': empty,
+  'servers:connect': z.object({ serverId: z.string().min(1).max(64), profileId: profileIdSchema }),
+  'stats:list': empty,
+  'themes:list': empty,
+  'themes:apply': z.object({ id: z.string().min(1).max(64) }),
+  'themes:import': empty,
+  'themes:export': z.object({ id: z.string().min(1).max(64).optional() }),
+  'themes:delete': z.object({ id: z.string().min(1).max(64) }),
   'accounts:list': empty,
   'accounts:active': empty,
   'accounts:setActive': accountIdSchema,
@@ -255,12 +309,18 @@ export const requestSchemas = {
       .optional()
   }),
   'profiles:loaderVersions': z.object({ kind: loaderKindSchema, gameVersion: versionIdSchema }),
+  'profiles:templates': empty,
+  'profiles:createFromTemplate': z.object({
+    templateId: z.string().min(1).max(64),
+    name: z.string().min(1).max(60).optional()
+  }),
   'mods:search': modSearchSchema,
   'mods:project': z.object({ source: modSourceSchema, projectId: z.string().min(1).max(64) }),
   'mods:versions': z.object({
     source: modSourceSchema,
     projectId: z.string().min(1).max(64),
-    profileId: z.string().min(1).max(64)
+    profileId: z.string().min(1).max(64),
+    kind: contentKindSchema.optional()
   }),
   'mods:plan': modProfileSchema.extend({ version: modVersionSchema }),
   'mods:install': modProfileSchema.extend({
@@ -274,8 +334,11 @@ export const requestSchemas = {
   'mods:scan': modProfileSchema,
   'mods:updates': modProfileSchema,
   'mods:updateAll': modProfileSchema,
+  'mods:pin': modIdSchema.extend({ pinned: z.boolean() }),
+  'mods:rollback': modIdSchema,
   'mods:openFolder': modProfileSchema,
   'mods:importPack': empty,
+  'mods:exportPack': modProfileSchema.extend({ includeConfigs: z.boolean().optional() }),
   'mods:setCurseforgeKey': z.object({ key: z.string().max(200) }),
   'mods:curseforgeReady': empty,
   'news:list': z.object({ refresh: z.boolean().optional() }),

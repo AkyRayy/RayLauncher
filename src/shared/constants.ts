@@ -1,7 +1,8 @@
 export const APP_NAME = 'RayLauncher'
-export const APP_USER_AGENT = 'RayLauncher/1.0.0 (+https://github.com/AkyRayy/RayLauncher)'
+export const APP_USER_AGENT = 'RayLauncher/1.1.0 (+https://github.com/AkyRayy/RayLauncher)'
 
 export const DEFAULT_MS_CLIENT_ID = '00000000402b5328'
+export const DEFAULT_DISCORD_CLIENT_ID = '1546361084678512720'
 
 export const MOJANG = {
   versionManifest: 'https://launchermeta.mojang.com/mc/game/version_manifest_v2.json',
@@ -62,6 +63,47 @@ export const RELEASES = {
   api: 'https://api.github.com/repos/AkyRayy/RayLauncher/releases?per_page=10',
   page: 'https://github.com/AkyRayy/RayLauncher/releases',
   cacheTtlMs: 15 * 60 * 1000
+} as const
+
+export const DISCORD = {
+  pipeName: 'discord-ipc',
+  maxPipeIndex: 9,
+  appAssets: { largeImage: 'raylauncher', smallImage: 'minecraft' }
+} as const
+
+export const PERF = {
+  // Слагы Modrinth для кнопки «Ускорить»: ставятся по загрузчику профиля.
+  boost: {
+    fabric: ['sodium', 'iris', 'fabric-api', 'lithium', 'ferrite-core'],
+    quilt: ['sodium', 'iris', 'qsl', 'lithium', 'ferrite-core'],
+    forge: ['embeddium', 'oculus'],
+    neoforge: ['embeddium', 'oculus']
+  },
+  lowMemoryMb: 2048,
+  highMemoryCapMb: 8192
+} as const
+
+export const SERVERS = {
+  defaultPort: 25565,
+  pingTimeoutMs: 8000,
+  maxMotdLength: 300,
+  protocolVersion: 767
+} as const
+
+export const THEMES = {
+  fileExtension: 'raytheme.json',
+  maxCssVars: 40,
+  maxNameLength: 60
+} as const
+
+export const TELEMETRY = {
+  maxReportLines: 60,
+  maxPayloadBytes: 64 * 1024,
+  sendTimeoutMs: 15_000
+} as const
+
+export const CRASH = {
+  reportTextLimit: 12_000
 } as const
 
 export const NETWORK = {

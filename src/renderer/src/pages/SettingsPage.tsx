@@ -9,6 +9,7 @@ import { Switch } from '@renderer/components/ui/Switch'
 import { SegmentedControl } from '@renderer/components/ui/SegmentedControl'
 import { SettingRow, Select, Slider, TextArea, TextInput } from '@renderer/components/ui/Field'
 import { FolderIcon } from '@renderer/components/icons'
+import { ThemeGallery } from '@renderer/features/ThemeGallery'
 import { cn } from '@renderer/lib/cn'
 import { formatMemory } from '@shared/util'
 import { MEMORY, NETWORK } from '@shared/constants'
@@ -250,6 +251,7 @@ function AppearanceTab({ settings, patch }: TabProps): React.ReactElement {
           />
         }
       />
+      <ThemeGallery />
     </>
   )
 }
@@ -529,6 +531,65 @@ function AdvancedTab({
             checked={settings.telemetry}
             onChange={(checked) => void patch({ telemetry: checked })}
             label={t.settings.telemetry}
+          />
+        }
+      />
+      <SettingRow
+        title={t.settings.telemetryEndpoint}
+        hint={t.settings.telemetryHint}
+        control={
+          <TextInput
+            value={settings.telemetryEndpoint}
+            onChange={(event) => void patch({ telemetryEndpoint: event.target.value })}
+            placeholder="https://…"
+            className="w-64"
+          />
+        }
+      />
+      <SettingRow
+        title={t.settings.discord}
+        hint={t.settings.discordHint}
+        control={
+          <Switch
+            checked={settings.discordPresence}
+            onChange={(checked) => void patch({ discordPresence: checked })}
+            label={t.settings.discord}
+          />
+        }
+      />
+      <SettingRow
+        title={t.settings.discordClientId}
+        hint={t.settings.discordClientIdHint}
+        control={
+          <TextInput
+            value={settings.discordClientId}
+            onChange={(event) => void patch({ discordClientId: event.target.value })}
+            placeholder="123456789012345678"
+            className="w-64"
+          />
+        }
+      />
+      <SettingRow
+        title={t.settings.watchdog}
+        hint={t.settings.watchdogHint}
+        control={
+          <Switch
+            checked={settings.watchdogEnabled}
+            onChange={(checked) => void patch({ watchdogEnabled: checked })}
+            label={t.settings.watchdog}
+          />
+        }
+      />
+      <SettingRow
+        title={t.settings.watchdogTimeout}
+        control={
+          <TextInput
+            type="number"
+            value={settings.watchdogTimeoutMin}
+            min={1}
+            max={120}
+            className="w-20"
+            onChange={(event) => void patch({ watchdogTimeoutMin: Number(event.target.value) || 10 })}
           />
         }
       />

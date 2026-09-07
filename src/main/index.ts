@@ -14,12 +14,19 @@ import { registerAccountsIpc } from './ipc/accounts.ipc'
 import { registerProfilesIpc } from './ipc/profiles.ipc'
 import { registerModsIpc } from './ipc/mods.ipc'
 import { registerNewsIpc, registerUpdatesIpc } from './ipc/news.ipc'
+import { registerCrashIpc } from './ipc/crash.ipc'
+import { registerPerfIpc } from './ipc/perf.ipc'
+import { registerDiscordIpc } from './ipc/discord.ipc'
+import { registerServersIpc } from './ipc/servers.ipc'
+import { registerStatsIpc } from './ipc/stats.ipc'
+import { registerThemesIpc } from './ipc/themes.ipc'
 import { initUpdater, disposeUpdater } from './updater/updater'
 import { closeDatabase, initDatabase } from './db/database'
 import { pruneExpiredCache } from './db/cache.repo'
 import { startTokenRefresher, stopTokenRefresher } from './auth/tokenRefresher'
 import { stopLocalYggdrasil } from './auth/localYggdrasil'
-import { stopAllGames } from './minecraft/launcher'
+import { startWatchdog, stopAllGames, stopWatchdog } from './minecraft/launcher'
+import { disposePresence, initPresence } from './discord/presence'
 import { disposeHashPool } from './core/hash'
 import { disposeZipPool } from './core/zip'
 import { createMainWindow, focusMainWindow, loadRenderer } from './window'
@@ -73,6 +80,12 @@ async function bootstrap(): Promise<void> {
   registerAccountsIpc()
   registerProfilesIpc()
   registerModsIpc()
+  registerCrashIpc()
+  registerPerfIpc()
+  registerDiscordIpc()
+  registerServersIpc()
+  registerStatsIpc()
+  registerThemesIpc()
   registerNewsIpc()
   registerUpdatesIpc()
 
@@ -80,6 +93,8 @@ async function bootstrap(): Promise<void> {
 
   serveBackgrounds()
   startTokenRefresher()
+  initPresence()
+  startWatchdog()
 
   const window = createMainWindow()
   loadRenderer(window)
@@ -99,9 +114,11 @@ app.on('window-all-closed', () => {
 })
 
 app.on('will-quit', () => {
+  stopWatchdog()
   stopAllGames()
   stopTokenRefresher()
   stopLocalYggdrasil()
+  disposePresence()
   disposeUpdater()
   closeDatabase()
   void Promise.all([disposeHashPool(), disposeZipPool()])

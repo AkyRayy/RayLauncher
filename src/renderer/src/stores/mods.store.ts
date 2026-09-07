@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { LoaderKind, ModEntry, ModSearchHit, ModUpdateInfo, ModVersionInfo, ModSource } from '@shared/types'
+import type { ContentKind, LoaderKind, ModEntry, ModSearchHit, ModUpdateInfo, ModVersionInfo, ModSource } from '@shared/types'
 import { RayError } from '@shared/errors'
 import { api } from '@renderer/lib/api'
 
@@ -7,6 +7,7 @@ export type SortId = 'relevance' | 'downloads' | 'follows' | 'newest' | 'updated
 
 interface ModsState {
   source: ModSource
+  kind: ContentKind
   query: string
   sort: SortId
   hits: ModSearchHit[]
@@ -26,6 +27,7 @@ interface ModsState {
   curseforgeReady: boolean
 
   setSource: (source: ModSource) => void
+  setKind: (kind: ContentKind) => void
   setQuery: (query: string) => void
   setSort: (sort: SortId) => void
   search: (profileId: string | null) => Promise<void>
@@ -40,6 +42,9 @@ interface ModsState {
   checkUpdates: (profileId: string) => Promise<void>
   applyUpdate: (update: ModUpdateInfo) => Promise<void>
   applyAllUpdates: (profileId: string) => Promise<number>
+  pin: (modId: string, pinned: boolean) => Promise<void>
+  rollback: (modId: string) => Promise<void>
+  exportPack: (profileId: string, includeConfigs: boolean) => Promise<string | null>
   openFolder: (profileId: string) => Promise<void>
   refreshCurseforge: () => Promise<void>
   clearError: () => void
@@ -49,6 +54,7 @@ const PAGE = 20
 
 export const useModsStore = create<ModsState>((set, get) => ({
   source: 'modrinth',
+  kind: 'mod',
   query: '',
   sort: 'relevance',
   hits: [],
@@ -68,15 +74,17 @@ export const useModsStore = create<ModsState>((set, get) => ({
   curseforgeReady: false,
 
   setSource: (source) => set({ source, hits: [], offset: 0, total: 0 }),
+  setKind: (kind) => set({ kind, hits: [], offset: 0, total: 0 }),
   setQuery: (query) => set({ query }),
   setSort: (sort) => set({ sort }),
 
   search: async (profileId) => {
-    const { source, query, sort } = get()
+    const { source, kind, query, sort } = get()
     set({ searching: true, searchError: null })
     try {
       const result = await api.mods.search({
         source,
+        kind,
         query,
         sort,
         offset: 0,
@@ -92,13 +100,14 @@ export const useModsStore = create<ModsState>((set, get) => ({
   },
 
   loadMore: async (profileId) => {
-    const { source, query, sort, offset, hits, total, loadingMore } = get()
+    const { source, kind, query, sort, offset, hits, total, loadingMore } = get()
     if (loadingMore || hits.length >= total) return
 
     set({ loadingMore: true })
     try {
       const result = await api.mods.search({
         source,
+        kind,
         query,
         sort,
         offset,
@@ -222,6 +231,39 @@ export const useModsStore = create<ModsState>((set, get) => ({
       return 0
     } finally {
       set({ checkingUpdates: false })
+    }
+  },
+
+  pin: async (modId, pinned) => {
+    set({ busyId: modId, error: null })
+    try {
+      await api.mods.pin({ modId, pinned })
+    } catch (error) {
+      set({ error: RayError.from(error) })
+    } finally {
+      set({ busyId: null })
+    }
+  },
+
+  rollback: async (modId) => {
+    set({ busyId: modId, error: null })
+    try {
+      await api.mods.rollback({ modId })
+    } catch (error) {
+      set({ error: RayError.from(error) })
+    } finally {
+      set({ busyId: null })
+    }
+  },
+
+  exportPack: async (profileId, includeConfigs) => {
+    set({ error: null })
+    try {
+      const result = await api.mods.exportPack({ profileId, includeConfigs })
+      return result.path
+    } catch (error) {
+      set({ error: RayError.from(error) })
+      return null
     }
   },
 

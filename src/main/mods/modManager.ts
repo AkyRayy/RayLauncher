@@ -1,6 +1,6 @@
 import { win32 as path } from 'node:path'
 import { rename } from 'node:fs/promises'
-import type { LoaderKind, ModEntry, ModVersionInfo, Profile } from '@shared/types'
+import type { ContentKind, LoaderKind, ModEntry, ModPreviousVersion, ModVersionInfo, Profile } from '@shared/types'
 import { RayError } from '@shared/errors'
 import { enqueueBatch } from '../downloads/manager'
 import { ensureDir, pathExists, removePath } from '../core/fsx'
@@ -13,6 +13,7 @@ import {
   findModByProject,
   listMods,
   setModEnabled,
+  setModPinned,
   upsertMod,
   type UpsertModInput
 } from '../db/mods.repo'
@@ -25,6 +26,17 @@ const DISABLED_SUFFIX = '.disabled'
 
 export function modsDir(profileId: string): string {
   return instanceSubdir(profileId, 'mods')
+}
+
+export function contentDir(profileId: string, kind: ContentKind): string {
+  switch (kind) {
+    case 'resourcepack':
+      return instanceSubdir(profileId, 'resourcepacks')
+    case 'shader':
+      return instanceSubdir(profileId, 'shaderpacks')
+    default:
+      return instanceSubdir(profileId, 'mods')
+  }
 }
 
 export function versionSourceFor(profile: Profile): VersionSource {
@@ -53,6 +65,13 @@ export async function planInstall(
   version: ModVersionInfo
 ): Promise<Awaited<ReturnType<typeof resolveInstall>>> {
   const profile = requireProfile(profileId)
+  const kind = version.contentKind ?? 'mod'
+
+  // Пакетам ресурсов и шейдерам загрузчик не нужен, зависимостей у них нет.
+  if (kind !== 'mod') {
+    return { primary: version, dependencies: [], incompatible: [], missing: [] }
+  }
+
   assertLoader(profile.loader.kind)
 
   const installed = listMods(profileId).map((mod) => mod.projectId)
@@ -65,7 +84,8 @@ export async function installMod(
   options: { withDependencies?: boolean } = {}
 ): Promise<ModEntry[]> {
   const profile = requireProfile(profileId)
-  assertLoader(profile.loader.kind)
+  const kind = version.contentKind ?? 'mod'
+  if (kind === 'mod') assertLoader(profile.loader.kind)
 
   const plan = await planInstall(profileId, version)
   if (plan.incompatible.length > 0) {
@@ -77,7 +97,7 @@ export async function installMod(
   }
 
   const targets = options.withDependencies === false ? [version] : [version, ...plan.dependencies]
-  const directory = modsDir(profileId)
+  const directory = contentDir(profileId, kind)
   await ensureDir(directory)
 
   const handle = enqueueBatch(
@@ -94,17 +114,24 @@ export async function installMod(
   await handle.promise
 
   const entries = targets.map((item) =>
-    upsertMod(toEntryInput(profileId, item, path.join(directory, item.fileName)))
+    upsertMod(toEntryInput(profileId, item, path.join(directory, item.fileName), kind))
   )
 
-  logger.info(`В профиль ${profile.name} установлено модов: ${entries.length}`)
+  logger.info(`В профиль ${profile.name} установлено файлов: ${entries.length}`)
   return entries
 }
 
-function toEntryInput(profileId: string, version: ModVersionInfo, filePath: string): UpsertModInput {
+function toEntryInput(
+  profileId: string,
+  version: ModVersionInfo,
+  filePath: string,
+  kind: ContentKind,
+  previous?: ModPreviousVersion
+): UpsertModInput {
   return {
     profileId,
     source: version.source,
+    kind,
     projectId: version.projectId,
     versionId: version.versionId,
     title: version.title,
@@ -115,7 +142,9 @@ function toEntryInput(profileId: string, version: ModVersionInfo, filePath: stri
     sha1: version.sha1,
     ...(version.sha512 ? { sha512: version.sha512 } : {}),
     size: version.size,
-    enabled: true
+    enabled: true,
+    pinned: false,
+    ...(previous ? { previous } : {})
   }
 }
 
@@ -149,11 +178,121 @@ export async function toggleMod(modId: string, enabled: boolean): Promise<ModEnt
   return { ...mod, enabled, filePath: nextPath, fileName: nextName }
 }
 
+export async function pinMod(modId: string, pinned: boolean): Promise<ModEntry> {
+  const mod = findMod(modId)
+  if (!mod) throw new RayError('INVALID_INPUT', 'Мод не найден', { modId })
+  setModPinned(modId, pinned)
+  return { ...mod, pinned }
+}
+
 export async function updateMod(modId: string, version: ModVersionInfo): Promise<ModEntry> {
   const mod = findMod(modId)
   if (!mod) throw new RayError('INVALID_INPUT', 'Мод не найден', { modId })
 
-  const directory = modsDir(mod.profileId)
+  const directory = contentDir(mod.profileId, mod.kind)
+  await ensureDir(directory)
+
+  const previous = await previousOf(mod).catch(() => null)
+
+  const dest = path.join(directory, version.fileName)
+  const handle = enqueueBatch([
+    {
+      kind: 'mod',
+      url: version.downloadUrl,
+      dest,
+      ...(version.sha1 ? { sha1: version.sha1 } : {}),
+      size: version.size,
+      label: version.fileName,
+      profileId: mod.profileId
+    }
+  ])
+  await handle.promise
+
+  if (mod.filePath !== dest) await removePath(mod.filePath)
+
+  deleteMod(modId)
+  const entry = upsertMod({
+    ...toEntryInput(mod.profileId, version, dest, mod.kind),
+    ...(previous ? { previous } : {})
+  })
+  logger.info(`Мод «${mod.title}» обновлён до ${version.versionNumber}`)
+
+  return entry
+}
+
+/** Откат к версии, стоявшей до последнего обновления. */
+export async function rollbackMod(modId: string): Promise<ModEntry> {
+  const mod = findMod(modId)
+  if (!mod) throw new RayError('INVALID_INPUT', 'Мод не найден', { modId })
+  if (!mod.previous) {
+    throw new RayError('INVALID_INPUT', 'Для этого мода нет сохранённой прошлой версии', { modId })
+  }
+
+  const previous = mod.previous
+  const directory = contentDir(mod.profileId, mod.kind)
+  await ensureDir(directory)
+
+  const dest = path.join(directory, previous.fileName)
+  const handle = enqueueBatch([
+    {
+      kind: 'mod',
+      url: previous.downloadUrl,
+      dest,
+      ...(previous.sha1 ? { sha1: previous.sha1 } : {}),
+      size: previous.size,
+      label: previous.fileName,
+      profileId: mod.profileId
+    }
+  ])
+  await handle.promise
+
+  if (mod.filePath !== dest) await removePath(mod.filePath)
+
+  deleteMod(modId)
+  const entry = upsertMod({
+    ...toEntryInput(
+      mod.profileId,
+      {
+        source: mod.source,
+        contentKind: mod.kind,
+        versionId: previous.versionId,
+        projectId: mod.projectId,
+        title: mod.title,
+        versionNumber: previous.versionNumber,
+        gameVersions: [],
+        loaders: [],
+        releaseType: 'release',
+        datePublished: '',
+        downloadUrl: previous.downloadUrl,
+        fileName: previous.fileName,
+        size: previous.size,
+        sha1: previous.sha1,
+        dependencies: []
+      },
+      dest,
+      mod.kind
+    )
+  })
+  logger.info(`Мод «${mod.title}» откачен к ${previous.versionNumber || previous.fileName}`)
+  return entry
+}
+
+/** Перекачивание того же файла — лечит битые jar после краша. */
+export async function reinstallMod(modId: string): Promise<ModEntry> {
+  const mod = findMod(modId)
+  if (!mod) throw new RayError('INVALID_INPUT', 'Мод не найден', { modId })
+  if (mod.source === 'local' || mod.versionId.length === 0) {
+    throw new RayError('INVALID_INPUT', 'Мод добавлен вручную — переустановить можно только файлом', {
+      modId
+    })
+  }
+
+  const version =
+    mod.source === 'curseforge'
+      ? await curseforge.fetchVersion(mod.projectId, mod.versionId)
+      : await modrinth.fetchVersion(mod.versionId)
+
+  const directory = contentDir(mod.profileId, mod.kind)
   await ensureDir(directory)
 
   const dest = path.join(directory, version.fileName)
@@ -173,10 +312,28 @@ export async function updateMod(modId: string, version: ModVersionInfo): Promise
   if (mod.filePath !== dest) await removePath(mod.filePath)
 
   deleteMod(modId)
-  const entry = upsertMod(toEntryInput(mod.profileId, version, dest))
-  logger.info(`Мод «${mod.title}» обновлён до ${version.versionNumber}`)
-
+  const entry = upsertMod(toEntryInput(mod.profileId, version, dest, mod.kind))
+  logger.info(`Мод «${mod.title}» переустановлен`)
   return entry
+}
+
+async function previousOf(mod: ModEntry): Promise<ModPreviousVersion | null> {
+  if (mod.source === 'local' || mod.versionId.length === 0) return null
+
+  const version =
+    mod.source === 'curseforge'
+      ? await curseforge.fetchVersion(mod.projectId, mod.versionId).catch(() => null)
+      : await modrinth.fetchVersion(mod.versionId).catch(() => null)
+
+  if (!version) return null
+  return {
+    versionId: version.versionId,
+    versionNumber: version.versionNumber,
+    fileName: version.fileName,
+    downloadUrl: version.downloadUrl,
+    sha1: version.sha1,
+    size: version.size
+  }
 }
 
 export function installedProjectIds(profileId: string): Set<string> {
@@ -198,18 +355,18 @@ export async function verifyMod(mod: ModEntry): Promise<boolean> {
 export async function fetchVersionsFor(
   source: ModEntry['source'],
   projectId: string,
-  profile: Profile
+  profile: Profile,
+  kind: ContentKind = 'mod'
 ): Promise<ModVersionInfo[]> {
-  if (source === 'curseforge') {
-    return curseforge.fetchVersions(projectId, {
-      gameVersion: profile.gameVersion,
-      loader: profile.loader.kind
-    })
-  }
-  return modrinth.fetchVersions(projectId, {
-    gameVersion: profile.gameVersion,
-    loader: profile.loader.kind
-  })
+  // У ресурспаков и шейдеров привязки к загрузчику нет — фильтруем только по версии игры.
+  const filter = kind === 'mod' ? { gameVersion: profile.gameVersion, loader: profile.loader.kind } : { gameVersion: profile.gameVersion }
+
+  const versions =
+    source === 'curseforge'
+      ? await curseforge.fetchVersions(projectId, filter)
+      : await modrinth.fetchVersions(projectId, filter)
+
+  return versions.map((version) => ({ ...version, contentKind: kind }))
 }
 
 function assertLoader(kind: LoaderKind): void {
